@@ -15,6 +15,20 @@ After every completed project change, update these notes and commit and push the
 
 ## Change log
 
+### October 23, 2026 — Walk-over building pads and slower progression
+
+- Added a $6,500 circle pad at the front of each station. The owner can walk onto it to construct an upstairs floor, staircase, landing, handrails, raised roof, and three upstairs broadcast slots. Construction fades in and plays a short chime.
+- Added a $35,000 upstairs expansion pad for three more slots. Maximum capacity is now twelve: six ground-floor and six upstairs. Upstairs unlocks remain independent of ground-floor booth upgrades, and the best performers are assigned to the actual unlocked locations.
+- Purchases use server-side circle occupancy checks, owner/stage/funds/character validation, and one attempt per pad entry. Unaffordable pads require stepping off and back on to retry. Purchased pads disappear and cannot charge again. Thin physical touch contacts proved unreliable during testing, so entry detection now uses a small server-side distance check at 0.15-second intervals.
+- Floor stages are included in save snapshots and rebuilt from saved profile data. Building purchases request an immediate save. Existing profiles default to an unbuilt upstairs; existing money, collections, and upgrades are retained.
+- Rebalanced base creature income to $0.25–$15/sec. Duplicate bonuses are now 3% per additional copy, capped at +27%, and amplifiers add 10% per level, capped at +50%. Fractional income accumulates, displays, and saves without rounding a starter creature down to zero.
+- Repriced upgrades and building milestones. All 27 purchases total $298,330. Full-capacity, fully amplified income with ten copies of every creature caps at $97.54/sec.
+- Increased base required lock to 8–14 seconds depending on band and clear/faint reception. Decoder upgrades remove up to two seconds. Perfect tracking adds 10% progress speed; acquisition takes 0.75 seconds, and the timeout is 70 seconds. Capture cash is greatly reduced, with a $1 minimum.
+- Validation: a fresh-profile perfect-assisted Backyard capture took 8.78 seconds; a Bloopini generated $0.50 over two observed income ticks. An unaffordable pad produced feedback once and did not repeat while the player remained on it.
+- Validation: used a temporary funded Studio test fixture to exercise paid construction without waiting through the economy. Walked onto the pad, verified its $6,500 cost and nine active performers, walked up the full staircase, then walked onto the upstairs pad and verified its $35,000 debit and twelve active performers. Standing on purchased pads did not charge again; visiting another station's pad did not purchase it. Test funds and seeded collection were never written to production source files or the data store, and the temporary Studio source was restored.
+- Balance analysis: read costs and income from the installed config. An optimistic accounting bound for buying everything from zero is about 50.4 minutes, even granting maximum income immediately and maximum capture payouts at the fastest possible capture cadence. Fifty simplified perfect-tracking purchase simulations estimated 86.9–92.7 minutes (median 88.5). These are model results, not a full human playthrough; existing saved balances are excluded.
+- Added `tools/Check-Balance.commandbar.luau` for repeatable read-only accounting, slot-mapping, fractional-income, and capture-duration checks. Updated recovery files and instructions. Live published-server save/rejoin and multi-client release testing remain outstanding.
+
 ### October 23, 2026 — Larger stations, expanded upgrades, refined catching
 
 - Enlarged every station from 54×39 to 76×58 studs, just over doubling floor space. Increased ceiling height, porch space, station spacing, yard size, and path length. Added equipment workbenches and six spaced booth pads per station. Reduced booth-label clutter.

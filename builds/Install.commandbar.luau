@@ -7,29 +7,50 @@ C.Bands = {
  {Name = "VOIDCAST", Color = Color3.fromRGB(255,164,98)},
 }
 C.Creatures = {
- {Name="Bloopini", Band=1, Weight=50, Income=2, Color=Color3.fromRGB(98,231,192), Shape="Ball"},
- {Name="Toast Goblin", Band=1, Weight=30, Income=4, Color=Color3.fromRGB(255,199,119), Shape="Block"},
- {Name="Wobble Bob", Band=1, Weight=16, Income=7, Color=Color3.fromRGB(255,139,183), Shape="Ball"},
- {Name="Sir Static", Band=1, Weight=4, Income=14, Color=Color3.fromRGB(176,162,255), Shape="Block"},
- {Name="Lunar Noodle", Band=2, Weight=50, Income=18, Color=Color3.fromRGB(168,171,255), Shape="Ball"},
- {Name="Disco Dumpling", Band=2, Weight=30, Income=27, Color=Color3.fromRGB(248,139,237), Shape="Ball"},
- {Name="Cosmic Crumb", Band=2, Weight=16, Income=42, Color=Color3.fromRGB(114,218,255), Shape="Block"},
- {Name="Professor Beep", Band=2, Weight=4, Income=75, Color=Color3.fromRGB(255,222,115), Shape="Block"},
- {Name="Void Pickle", Band=3, Weight=50, Income=90, Color=Color3.fromRGB(162,239,120), Shape="Ball"},
- {Name="Glitch Gremlin", Band=3, Weight=30, Income=135, Color=Color3.fromRGB(255,133,108), Shape="Block"},
- {Name="Orbit Overlord", Band=3, Weight=16, Income=210, Color=Color3.fromRGB(128,168,255), Shape="Ball"},
- {Name="The Last Braincell", Band=3, Weight=4, Income=380, Color=Color3.fromRGB(255,224,143), Shape="Ball"},
+ {Name="Bloopini", Band=1, Weight=50, Income=.25, Color=Color3.fromRGB(98,231,192), Shape="Ball"},
+ {Name="Toast Goblin", Band=1, Weight=30, Income=.4, Color=Color3.fromRGB(255,199,119), Shape="Block"},
+ {Name="Wobble Bob", Band=1, Weight=16, Income=.65, Color=Color3.fromRGB(255,139,183), Shape="Ball"},
+ {Name="Sir Static", Band=1, Weight=4, Income=1.1, Color=Color3.fromRGB(176,162,255), Shape="Block"},
+ {Name="Lunar Noodle", Band=2, Weight=50, Income=1.4, Color=Color3.fromRGB(168,171,255), Shape="Ball"},
+ {Name="Disco Dumpling", Band=2, Weight=30, Income=2, Color=Color3.fromRGB(248,139,237), Shape="Ball"},
+ {Name="Cosmic Crumb", Band=2, Weight=16, Income=2.9, Color=Color3.fromRGB(114,218,255), Shape="Block"},
+ {Name="Professor Beep", Band=2, Weight=4, Income=4.5, Color=Color3.fromRGB(255,222,115), Shape="Block"},
+ {Name="Void Pickle", Band=3, Weight=50, Income=5.5, Color=Color3.fromRGB(162,239,120), Shape="Ball"},
+ {Name="Glitch Gremlin", Band=3, Weight=30, Income=7.5, Color=Color3.fromRGB(255,133,108), Shape="Block"},
+ {Name="Orbit Overlord", Band=3, Weight=16, Income=10, Color=Color3.fromRGB(128,168,255), Shape="Ball"},
+ {Name="The Last Braincell", Band=3, Weight=4, Income=15, Color=Color3.fromRGB(255,224,143), Shape="Ball"},
 }
-C.AntennaCosts = {350, 2400}
-C.ReceiverCosts = {100, 300, 900, 2500, 6000, 14000, 30000}
+C.AntennaCosts = {900, 14000}
+C.ReceiverCosts = {80,300,1100,4000,12000,32000,65000}
+C.FloorCosts={6500,35000}
+C.PerfectSpeed=1.10
+C.PerfectCash=1.10
 C.Upgrades = {
  {Key="Antenna",Name="Antenna",Costs=C.AntennaCosts},
  {Key="Receiver",Name="Receiver",Costs=C.ReceiverCosts},
- {Key="Stabilizer",Name="Signal stabilizer",Costs={125,450,1500,4500}},
- {Key="Decoder",Name="Signal decoder",Costs={180,650,2200,7000}},
- {Key="Amplifier",Name="Broadcast amplifier",Costs={150,550,1800,5500,16000}},
- {Key="Booths",Name="Extra broadcast booths",Costs={500,2000,6500}},
+ {Key="Stabilizer",Name="Signal stabilizer",Costs={120,500,2100,7500}},
+ {Key="Decoder",Name="Signal decoder",Costs={180,850,3800,14000}},
+ {Key="Amplifier",Name="Broadcast amplifier",Costs={250,1300,6000,20000,55000}},
+ {Key="Booths",Name="Ground floor booths",Costs={650,3200,12000}},
 }
+function C.FloorLevel(data)
+ local level=tonumber(data and data.Floors) or 1
+ if level~=level then level=1 end
+ return math.clamp(math.floor(level),1,3)
+end
+function C.SlotActive(data,index)
+ if index<=6 then return index<=2+((data and data.Booths) or 1) end
+ return index<=9 and C.FloorLevel(data)>=2 or index<=12 and index>=10 and C.FloorLevel(data)>=3
+end
+function C.Money(value)
+ local rounded=math.floor(value*100+.5)/100
+ if rounded%1==0 then return tostring(math.floor(rounded)) end
+ return (string.format("%.2f",rounded):gsub("0$",""))
+end
+function C.Required(level,band,risky) return 8+(band-1)*2+(risky and 2 or 0)-.5*(level-1) end
+function C.CaptureReward(id,perfect)
+ return math.max(1,math.floor(C.Creatures[id].Income*.4*(perfect and C.PerfectCash or 1)*100+.5)/100)
+end
 function C.Levels(data)
  local levels={}
  for _,u in ipairs(C.Upgrades) do
@@ -39,29 +60,29 @@ function C.Levels(data)
  end
  return levels
 end
-function C.Slots(data) return 2+((data and data.Booths) or 1) end
-function C.Multiplier(data) return 1+.25*(((data and data.Amplifier) or 1)-1) end
+function C.Slots(data) return 2+((data and data.Booths) or 1)+3*(C.FloorLevel(data)-1) end
+function C.Multiplier(data) return 1+.10*(((data and data.Amplifier) or 1)-1) end
 function C.Description(key,level)
  if key=="Antenna" then return "Receives "..C.Bands[level].Name
  elseif key=="Receiver" then return "Tuning window +"..string.format("%.1f",(level-1)*2.2).." percentage points"
  elseif key=="Stabilizer" then return "Drift "..(level-1)*8 .."% slower / "..string.format("%.2fs",.20+.06*(level-1)).." slip grace"
- elseif key=="Decoder" then return string.format("%.2fs of lock to capture",3.5-.35*(level-1))
- elseif key=="Amplifier" then return "+"..(level-1)*25 .."% broadcast income"
- elseif key=="Booths" then return tostring(level+2).." active broadcast booths" end
+ elseif key=="Decoder" then return string.format("%.1fs lock on clear Backyard FM",C.Required(level,1,false))
+ elseif key=="Amplifier" then return "+"..(level-1)*10 .."% broadcast income"
+ elseif key=="Booths" then return tostring(level+2).." ground floor booths (upstairs uses pads)" end
  return ""
 end
 function C.SignalStats(data,band,risky)
  return {Speed=((risky and 1.1 or .7)+band*.18)*(1-.08*(data.Stabilizer-1)),
   Width=(risky and .115 or .185)+(data.Receiver-1)*.022,
-  Required=3.5-.35*(data.Decoder-1),Grace=.20+.06*(data.Stabilizer-1),
-  Amplitude=risky and .34 or .30,Duration=40}
+  Required=C.Required(data.Decoder,band,risky),Grace=.20+.06*(data.Stabilizer-1),
+  Amplitude=risky and .34 or .30,Duration=70}
 end
 function C.Target(s,now)
  local t=(now-s.Start)*s.Speed+s.Phase
  return .5+s.Amplitude*(s.Risky and (.8*math.sin(t)+.2*math.sin(t*1.7+s.Phase)) or math.sin(t))
 end
 function C.Value(id, count)
- return C.Creatures[id].Income * (1 + .15 * (math.min(count, 10)-1))
+ return C.Creatures[id].Income * (1 + .03 * (math.min(count, 10)-1))
 end
 function C.Best(owned,levels)
  local best = {}
@@ -72,7 +93,7 @@ function C.Best(owned,levels)
  table.sort(best,function(a,b) if a.Value==b.Value then return a.Id<b.Id end return a.Value>b.Value end)
  local income=0
  for i=1,math.min(C.Slots(levels),#best) do income+=best[i].Value end
- return best,math.floor(income)
+ return best,math.floor(income*100+.5)/100
 end
 return C
 ]====] s.Parent=RS end
@@ -129,6 +150,7 @@ end
 return M
 ]====] s.Parent=RS end
 do local old=SSS:FindFirstChild("SignalWorld") if old then old:Destroy() end local s=Instance.new("ModuleScript") s.Name="SignalWorld" s.Source=[====[local W={}
+local C=require(game:GetService("ReplicatedStorage"):WaitForChild("SignalConfig"))
 local teal=Color3.fromRGB(78,238,204)
 local navy=Color3.fromRGB(25,35,56)
 local function part(parent,name,size,pos,color,material,shape)
@@ -144,6 +166,65 @@ local function label(parent,text,offset,size,color)
 end
 function W.Creature(parent,id,color,shape,pos)
  return require(game:GetService("ReplicatedStorage"):WaitForChild("SignalCreature")).Build(parent,id,pos,false)
+end
+local function purchasePad(plot,name,pos,cost,title)
+ local p=part(plot,name,Vector3.new(.35,10,10),pos,Color3.fromRGB(255,168,112),Enum.Material.Neon,"Cylinder")
+ p.CFrame=CFrame.new(pos)*CFrame.Angles(0,0,math.pi/2) p.CanCollide=false
+ label(p,title.."\n+3 SLOTS / $"..C.Money(cost).."\nWALK ONTO THIS PAD",Vector3.new(0,3.5,0),200).TextSize=13
+ p.Label.MaxDistance=60
+ return p
+end
+function W.UpdatePads(plot,data)
+ local level=C.FloorLevel(data)
+ for index,name in ipairs({"FloorPad","ExpansionPad"}) do
+  local pad=plot:FindFirstChild(name)
+  if pad then
+   local visible=level==index
+   pad.Transparency=visible and .1 or 1 pad.CanTouch=visible pad.Label.Enabled=visible
+   pad.Color=(data.Money or 0)>=C.FloorCosts[index] and teal or Color3.fromRGB(255,168,112)
+  end
+ end
+end
+function W.SetFloor(plot,level,animate)
+ level=C.FloorLevel({Floors=level})
+ local o=plot.Deck.Position
+ local loft=plot:FindFirstChild("SecondFloor")
+ if level==1 and loft then loft:Destroy() loft=nil end
+ plot.Roof.Position=o+Vector3.new(0,level>=2 and 30 or 15,7)
+ plot.RoofTrim.Position=o+Vector3.new(0,level>=2 and 29.7 or 14.7,-15.2)
+ if level>=2 and not loft then
+  loft=Instance.new("Model") loft.Name="SecondFloor"
+  local wood=Color3.fromRGB(82,98,116)
+  part(loft,"UpperDeck",Vector3.new(60,1,44),o+Vector3.new(-8,15,7),wood,Enum.Material.WoodPlanks)
+  part(loft,"StairLanding",Vector3.new(16,1,18),o+Vector3.new(30,15,20),wood,Enum.Material.WoodPlanks)
+  part(loft,"UpperTrim",Vector3.new(60,.25,.3),o+Vector3.new(-8,14.7,-15.2),teal,Enum.Material.Neon)
+  for _,x in ipairs({-37.5,37.5}) do
+   part(loft,"SideRail",Vector3.new(.5,3,44),o+Vector3.new(x,17,7),navy)
+   for _,z in ipairs({-14,28}) do part(loft,"RoofSupport",Vector3.new(.7,15,.7),o+Vector3.new(x,22.5,z),navy) end
+  end
+  part(loft,"FrontRail",Vector3.new(60,3,.5),o+Vector3.new(-8,17,-14.8),navy)
+  part(loft,"BackRail",Vector3.new(76,3,.5),o+Vector3.new(0,17,28.5),navy)
+  part(loft,"StairwellGuard",Vector3.new(.5,3,26),o+Vector3.new(22,17,-2),navy)
+  for step=1,12 do
+   part(loft,"Step"..step,Vector3.new(9,step*1.25,2.5),o+Vector3.new(30,.5+step*.625,-17.5+(step-1)*2.5),wood)
+  end
+  for _,x in ipairs({24.9,35.1}) do
+   local a=o+Vector3.new(x,3.2,-18.75) local b=o+Vector3.new(x,18.2,11.25)
+   local rail=part(loft,"StairHandrail",Vector3.new(.3,.3,(b-a).Magnitude),(a+b)/2,teal,Enum.Material.Neon)
+   rail.CFrame=CFrame.lookAt((a+b)/2,b)
+   for step=1,12,3 do part(loft,"HandrailPost",Vector3.new(.3,2.5,.3),o+Vector3.new(x,1.75+step*1.25,-17.5+(step-1)*2.5),navy) end
+  end
+  local sign=part(loft,"LoftSign",Vector3.new(1,1,1),o+Vector3.new(-8,23,27),navy) sign.Transparency=1 sign.CanCollide=false
+  label(sign,"UPSTAIRS BROADCAST LOUNGE",Vector3.zero,300,teal).TextSize=14
+  loft.Parent=plot
+  if animate then
+   for _,p in ipairs(loft:GetChildren()) do if p:IsA("BasePart") and p.Transparency<1 then
+    local final=p.Transparency p.Transparency=1
+    game:GetService("TweenService"):Create(p,TweenInfo.new(.7),{Transparency=final}):Play()
+   end end
+  end
+ end
+ plot:SetAttribute("BuiltFloorLevel",level)
 end
 function W.Build()
  local storage=game:GetService("ServerStorage")
@@ -194,15 +275,19 @@ function W.Build()
    local bar=part(plot,"Antenna"..j,Vector3.new(8+j*3,.25,.25),o+Vector3.new(-31,30+j*3,23),accent,Enum.Material.Neon)
    bar.Transparency=j==1 and 0 or .85
   end
-  for j=1,6 do
-   local p=o+Vector3.new(-30+(j-1)*12,0,16)
+  for j=1,12 do
+   local p=j<=6 and o+Vector3.new(-30+(j-1)*12,0,16) or o+Vector3.new(-26+((j-7)%3)*20,15,j<=9 and 3 or 20)
    part(plot,"Booth"..j,Vector3.new(7,.5,7),p+Vector3.new(0,.8,0),accent,Enum.Material.Neon)
    part(plot,"BoothPad"..j,Vector3.new(6.6,.3,6.6),p+Vector3.new(0,1.15,0),navy)
    local anchor=part(plot,"Display"..j,Vector3.new(.1,.1,.1),p+Vector3.new(0,3,0),navy) anchor.Transparency=1 anchor.CanCollide=false
    label(anchor,"BOOTH "..j..(j<=3 and "\nEMPTY" or "\nLOCKED"),Vector3.new(0,3,0),112,accent).TextSize=12
    anchor.Label.Size=UDim2.fromOffset(112,48) anchor.Label.MaxDistance=65
-   plot["Booth"..j].Transparency=j<=3 and 0 or .8
+   plot["Booth"..j].Transparency=j<=3 and 0 or j<=6 and .8 or 1
+   if j>6 then plot["BoothPad"..j].Transparency=1 plot["BoothPad"..j].CanCollide=false plot["Booth"..j].CanCollide=false anchor.Label.Enabled=false end
   end
+  purchasePad(plot,"FloorPad",o+Vector3.new(13,.8,-23),C.FloorCosts[1],"BUILD SECOND FLOOR")
+  purchasePad(plot,"ExpansionPad",o+Vector3.new(-25,15.8,-10),C.FloorCosts[2],"EXPAND UPSTAIRS")
+  W.UpdatePads(plot,{Floors=1,Money=0})
   local spawn=Instance.new("SpawnLocation") spawn.Name="Arrival" spawn.Size=Vector3.new(6,.3,6) spawn.Position=o+Vector3.new(-24,1,-22) spawn.Anchored=true spawn.Transparency=1 spawn.CanCollide=false spawn.Enabled=false spawn.Parent=plot
   spawn.CFrame=CFrame.new(spawn.Position)*CFrame.Angles(0,math.pi,0)
   task.wait()
@@ -238,6 +323,7 @@ local yard=workspace:FindFirstChild("SignalYard") or W.Build()
 local event=RS:FindFirstChild("SignalEvent") or Instance.new("RemoteEvent") event.Name="SignalEvent" event.Parent=RS
 local store=DSS:GetDataStore("BrainrotSignal_v1")
 local profiles={} local claims={} local sessions={} local rate={}
+local floorDebounce={} local floorOccupants={}
 local rng=Random.new()
 local nextBroadcast=workspace:GetServerTimeNow()+90
 local broadcastEnd=0
@@ -248,19 +334,26 @@ local function notify(p,msg) send(p,"Notice",msg) end
 local function state(p)
  local d=profiles[p] if not d or not d.Ready then return end
  local best,income=C.Best(d.Owned,d)
- send(p,"State",{Money=math.floor(d.Money),Antenna=d.Antenna,Receiver=d.Receiver,Upgrades=C.Levels(d),Slots=C.Slots(d),Owned=d.Owned,Income=income,Best=best,Plot=d.Plot.Name,Save=d.Save,Ready=true})
+ send(p,"State",{Money=math.floor(d.Money*100+.5)/100,Antenna=d.Antenna,Receiver=d.Receiver,Floors=d.Floors,Upgrades=C.Levels(d),Slots=C.Slots(d),Owned=d.Owned,Income=income,Best=best,Plot=d.Plot.Name,Save=d.Save,Ready=true})
 end
-local function display(p)
+local function display(p,animate)
  local d=profiles[p] if not d then return end
+ W.SetFloor(d.Plot,d.Floors,animate)
  local best=C.Best(d.Owned,d)
  local old=d.Plot:FindFirstChild("Performers") if old then old:Destroy() end
  local folder=Instance.new("Folder") folder.Name="Performers" folder.Parent=d.Plot
  local slots=C.Slots(d)
- for j=1,6 do
+ local rank=0
+ for j=1,12 do
   local anchor=d.Plot:FindFirstChild("Display"..j)
-  local entry=j<=slots and best[j] or nil
-  anchor.Label.TextLabel.Text=entry and (C.Creatures[entry.Id].Name.."\n$"..math.floor(entry.Value).." / sec") or ("BOOTH "..j..(j<=slots and "\nEMPTY" or "\nLOCKED"))
-  d.Plot["Booth"..j].Transparency=j<=slots and 0 or .8
+  local active=C.SlotActive(d,j) local visible=j<=6 or d.Floors>=2
+  if active then rank+=1 end
+  local entry=active and best[rank] or nil
+  anchor.Label.Enabled=visible
+  anchor.Label.TextLabel.Text=entry and (C.Creatures[entry.Id].Name.."\n$"..C.Money(entry.Value).." / sec") or ("BOOTH "..j..(active and "\nEMPTY" or "\nLOCKED"))
+  d.Plot["Booth"..j].Transparency=not visible and 1 or active and 0 or .8
+  d.Plot["Booth"..j].CanCollide=visible
+  d.Plot["BoothPad"..j].Transparency=visible and 0 or 1 d.Plot["BoothPad"..j].CanCollide=visible
   if entry then
    local c=C.Creatures[entry.Id]
    local m=W.Creature(folder,entry.Id,c.Color,c.Shape,anchor.Position)
@@ -274,6 +367,8 @@ local function display(p)
  d.Plot.ReceiverRack.Size=Vector3.new(3,3+(d.Receiver-1)*.3,3)
  for _,u in ipairs(C.Upgrades) do d.Plot:SetAttribute(u.Key,d[u.Key]) end
  d.Plot:SetAttribute("ActiveBooths",slots)
+ d.Plot:SetAttribute("Floors",d.Floors)
+ W.UpdatePads(d.Plot,d)
 end
 local function near(p)
  local d=profiles[p] local char=p.Character local root=char and char:FindFirstChild("HumanoidRootPart")
@@ -282,7 +377,7 @@ end
 local function save(p)
  local d=profiles[p] if not d or not d.Save or d.Saving then return end
  d.Saving=true
- local snapshot={Money=math.floor(d.Money),Antenna=d.Antenna,Receiver=d.Receiver,Owned=table.clone(d.Owned),Session=d.Token,Lease=os.time()+180}
+ local snapshot={Money=math.floor(d.Money*100+.5)/100,Floors=d.Floors,Antenna=d.Antenna,Receiver=d.Receiver,Owned=table.clone(d.Owned),Session=d.Token,Lease=os.time()+180}
  for _,u in ipairs(C.Upgrades) do snapshot[u.Key]=d[u.Key] end
  local ok,result=pcall(function()
   return store:UpdateAsync("u"..p.UserId,function(previous)
@@ -303,7 +398,7 @@ local function join(p)
  local plot
  for i=1,6 do if not claims[i] then claims[i]=p plot=yard["Station"..i] break end end
  if not plot then p:Kick("All six stations are occupied. Please join another server.") return end
- local d={Money=0,Antenna=1,Receiver=1,Owned={},Plot=plot,Save=false,Ready=false,Token=game:GetService("HttpService"):GenerateGUID(false)}
+ local d={Money=0,Floors=1,Antenna=1,Receiver=1,Owned={},Plot=plot,Save=false,Ready=false,Token=game:GetService("HttpService"):GenerateGUID(false)}
  for key,value in pairs(C.Levels({})) do d[key]=value end
  profiles[p]=d
  if not Run:IsStudio() then
@@ -316,6 +411,7 @@ local function join(p)
   end)
   if ok and result and result.Session==d.Token then
    d.Money=math.clamp(tonumber(result.Money) or 0,0,1e12)
+   d.Floors=C.FloorLevel(result)
    for key,value in pairs(C.Levels(result)) do d[key]=value end
    for key,count in pairs(type(result.Owned)=="table" and result.Owned or {}) do
     local id=tonumber(key)
@@ -350,9 +446,35 @@ local function leave(p)
   d.Plot:SetAttribute("Owner",nil)
   d.Plot.StationSign.Label.TextLabel.Text="AVAILABLE STATION"
   local performers=d.Plot:FindFirstChild("Performers") if performers then performers:Destroy() end
-  for j=1,6 do d.Plot["Display"..j].Label.TextLabel.Text="BOOTH "..j..(j<=3 and "\nEMPTY" or "\nLOCKED") end
+  W.SetFloor(d.Plot,1)
+  for j=1,12 do
+   d.Plot["Display"..j].Label.TextLabel.Text="BOOTH "..j..(j<=3 and "\nEMPTY" or "\nLOCKED")
+   d.Plot["Display"..j].Label.Enabled=j<=6
+   d.Plot["Booth"..j].Transparency=j<=3 and 0 or j<=6 and .8 or 1
+   d.Plot["BoothPad"..j].Transparency=j<=6 and 0 or 1
+   d.Plot["Booth"..j].CanCollide=j<=6 d.Plot["BoothPad"..j].CanCollide=j<=6
+  end
+  W.UpdatePads(d.Plot,{Floors=1,Money=0})
  end
- profiles[p]=nil sessions[p]=nil rate[p]=nil
+ profiles[p]=nil sessions[p]=nil rate[p]=nil floorDebounce[p]=nil floorOccupants[p]=nil
+end
+local function buyFloor(p,plot,index,pad)
+ local d=profiles[p]
+ if not d or not d.Ready or d.Removing or (floorDebounce[p] or 0)>os.clock() then return end
+ floorDebounce[p]=os.clock()+1.5
+ if d.Plot~=plot then notify(p,"This building pad belongs to another station.") return end
+ if d.Floors~=index then return end
+ local char=p.Character local root=char and char:FindFirstChild("HumanoidRootPart") local hum=char and char:FindFirstChildOfClass("Humanoid")
+ if not root or not hum or hum.Health<=0 then return end
+ local delta=root.Position-pad.Position
+ if math.abs(delta.Y)>5 or Vector2.new(delta.X,delta.Z).Magnitude>5.5 then return end
+ if sessions[p] then notify(p,"Close your current signal before using a building pad.") return end
+ local cost=C.FloorCosts[index]
+ if d.Money<cost then notify(p,"Need $"..C.Money(cost-d.Money).." more for this building pad.") return end
+ d.Money-=cost d.Floors+=1
+ display(p,true) state(p)
+ send(p,"FloorBuilt",{Level=d.Floors,Slots=C.Slots(d),Cost=cost})
+ task.spawn(save,p)
 end
 local function start(p,band,risky)
  local d=profiles[p] if not d or not near(p) then notify(p,"Walk to your radio to tune in.") return end
@@ -410,13 +532,25 @@ end
 Players.PlayerAdded:Connect(join)
 Players.PlayerRemoving:Connect(leave)
 for _,p in ipairs(Players:GetPlayers()) do task.spawn(join,p) end
-local tickIncome=0 local tickSave=0 local tickCapture=0
+local tickIncome=0 local tickSave=0 local tickCapture=0 local tickPads=0
 Run.Heartbeat:Connect(function(dt)
- tickIncome+=dt tickSave+=dt tickCapture+=dt
+ tickIncome+=dt tickSave+=dt tickCapture+=dt tickPads+=dt
  local now=workspace:GetServerTimeNow()
  if now>=nextBroadcast then
   broadcastBand=rng:NextInteger(1,3) broadcastEnd=now+45 nextBroadcast=now+180
   event:FireAllClients("Broadcast",{Band=broadcastBand,Ends=broadcastEnd,Next=nextBroadcast})
+ end
+ if tickPads>=.15 then
+  tickPads=0
+  for p,d in pairs(profiles) do
+   local stage=d.Floors local char=p.Character local root=char and char:FindFirstChild("HumanoidRootPart")
+   local pad=stage<=2 and d.Plot[stage==1 and "FloorPad" or "ExpansionPad"] or nil
+   local delta=root and pad and root.Position-pad.Position
+   local inside=delta and math.abs(delta.Y)<=5 and Vector2.new(delta.X,delta.Z).Magnitude<=5.5
+   if inside then
+    if floorOccupants[p]~=stage then floorOccupants[p]=stage buyFloor(p,d.Plot,stage,pad) end
+   else floorOccupants[p]=nil end
+  end
  end
  if tickCapture>=.1 then
   local step=math.min(tickCapture,.25) tickCapture=0
@@ -428,16 +562,16 @@ Run.Heartbeat:Connect(function(dt)
     local locked=now-s.LastDial<.6 and distance<=s.Width/2
     local perfect=locked and distance<=s.Width*.22
     s.Missed=locked and 0 or s.Missed+step
-    if now-s.Start>=.5 then
+    if now-s.Start>=.75 then
      if locked then s.LockTime+=step if perfect then s.PerfectTime+=step end end
-     s.Progress=math.clamp(s.Progress+(locked and step*(perfect and 1.25 or 1) or s.Missed>s.Grace and -step*.30 or 0),0,s.Required)
+     s.Progress=math.clamp(s.Progress+(locked and step*(perfect and C.PerfectSpeed or 1) or s.Missed>s.Grace and -step*.30 or 0),0,s.Required)
     end
     send(p,"Progress",{Progress=s.Progress,Locked=locked,Perfect=perfect,Holding=not locked and s.Missed<=s.Grace,Id=s.Progress>s.Required*.4 and s.Id or nil})
     if s.Progress>=s.Required then
      local d=profiles[p] local key=tostring(s.Id)
      d.Owned[key]=(d.Owned[key] or 0)+1
      local perfectCatch=s.PerfectTime/math.max(.01,s.LockTime)>=.6
-     local reward=math.floor(C.Creatures[s.Id].Income*3*(perfectCatch and 1.25 or 1))
+     local reward=C.CaptureReward(s.Id,perfectCatch)
      d.Money+=reward
      sessions[p]=nil display(p) state(p)
      send(p,"Caught",{Id=s.Id,Count=d.Owned[key],Special=s.Special,Perfect=perfectCatch,Reward=reward})
@@ -447,7 +581,7 @@ Run.Heartbeat:Connect(function(dt)
  end
  if tickIncome>=1 then
   local elapsed=math.floor(tickIncome) tickIncome-=elapsed
-  for p,d in pairs(profiles) do local _,income=C.Best(d.Owned,d) d.Money=math.min(1e12,d.Money+income*elapsed) state(p) end
+  for p,d in pairs(profiles) do local _,income=C.Best(d.Owned,d) d.Money=math.min(1e12,d.Money+income*elapsed) W.UpdatePads(d.Plot,d) state(p) end
  end
  if tickSave>=60 then tickSave=0 for p,d in pairs(profiles) do if not d.Removing then task.spawn(save,p) end end end
 end)
@@ -520,7 +654,7 @@ for i,b in ipairs(C.Bands) do
   else notice("Upgrade your antenna to unlock this band.") end
  end)
 end
-local desc=text(choose,"Clear = easier tracking. Faint = better rare odds.\nStay in the center for 25% faster capture!",UDim2.fromOffset(16,125),UDim2.new(1,-32,0,44),14,colors.Muted)
+local desc=text(choose,"Clear = easier tracking. Faint = better rare odds.\nHold the signal steadily. Gold center gives a small 10% boost.",UDim2.fromOffset(16,125),UDim2.new(1,-32,0,44),14,colors.Muted)
 local mode=button(choose,"SIGNAL: CLEAR / EASY",UDim2.new(0,16,0,185),UDim2.new(1,-32,0,46))
 mode.Activated:Connect(function() risky=not risky mode.Text=risky and "SIGNAL: FAINT / RISKY" or "SIGNAL: CLEAR / EASY" mode.BackgroundColor3=risky and colors.Orange or colors.Teal end)
 local startButton=button(choose,"SEARCH THE STATIC",UDim2.new(0,16,1,-65),UDim2.new(1,-32,0,46),colors.Purple)
@@ -578,7 +712,7 @@ local sound=create("Sound",game:GetService("SoundService"),{Name="SignalTone",So
 local function page(which)
  choose.Visible=which=="Choose" tuning.Visible=which=="Tuning" result.Visible=which=="Result" library.Visible=which=="Library" shop.Visible=which=="Shop"
  title.Text=which=="Shop" and "STATION WORKBENCH" or which=="Library" and "YOUR SIGNAL COLLECTION" or "THE LISTENING ROOM"
- if which=="Shop" then shopFeedback.Text="Spend your broadcast income to improve your station." end
+ if which=="Shop" then shopFeedback.Text="Build upstairs with the circle pads in your station." end
  overlay.Visible=true
 end
 local function stop()
@@ -624,8 +758,8 @@ local broadcast={Band=1,Ends=0,Next=0}
 event.OnClientEvent:Connect(function(kind,data)
  if kind=="State" then
   local firstState=profile==nil
-  profile=data cash.Text="$"..data.Money.."  /  $"..data.Income.." per sec"
-  shopBalance.Text="$"..data.Money.." available / "..data.Slots.." active booths"
+  profile=data cash.Text="$"..C.Money(data.Money).."  /  $"..C.Money(data.Income).." per sec"
+  shopBalance.Text="$"..C.Money(data.Money).." available / "..data.Slots.."/12 active booths"
   if firstState then task.spawn(function()
    task.wait(.4)
    local yard=workspace:FindFirstChild("SignalYard") local plot=yard and yard:FindFirstChild(data.Plot)
@@ -644,13 +778,16 @@ event.OnClientEvent:Connect(function(kind,data)
   for id,c in ipairs(C.Creatures) do
    local count=data.Owned[tostring(id)] or 0
    cards[id].Name.Text=count>0 and c.Name or "???"
-   cards[id].Info.Text=count>0 and ("$"..math.floor(C.Value(id,count)*C.Multiplier(data.Upgrades)).." / sec   •   x"..count) or C.Bands[c.Band].Name
+   cards[id].Info.Text=count>0 and ("$"..C.Money(C.Value(id,count)*C.Multiplier(data.Upgrades)).." / sec   •   x"..count) or C.Bands[c.Band].Name
    if count>0 then total+=1 end
   end
   collectionButton.Text=total.." / 12"
   if status.Text=="Connecting to your station..." then notice("Your radio is on the desk. Tune in to catch your first brainrot!") end
  elseif kind=="Open" then open()
  elseif kind=="OpenUpgrades" then stop() page("Shop")
+ elseif kind=="FloorBuilt" then
+  notice((data.Level==2 and "Second floor built!" or "Upstairs expanded!").." "..data.Slots.." total slots. Use the staircase on the right.")
+  local chime=sound:Clone() chime.Name="BuildChime" chime.Looped=false chime.Volume=.2 chime.PlaybackSpeed=.8 chime.Parent=game:GetService("SoundService") chime:Play() game:GetService("Debris"):AddItem(chime,3)
  elseif kind=="Notice" then notice(data)
  elseif kind=="Signal" then
   signal=data progress=0 visualProgress=0 dial=.5 receivedId=nil page("Tuning")
@@ -665,7 +802,7 @@ event.OnClientEvent:Connect(function(kind,data)
   stop() page("Result") preview(data.Id)
   local c=C.Creatures[data.Id] resultName.Text=c.Name resultName.TextColor3=c.Color
   resultTitle.Text=data.Perfect and "PERFECT CAPTURE!" or data.Count==1 and "NEW SIGNAL DISCOVERED!" or "SIGNAL AMPLIFIED!"
-  resultInfo.Text="Capture bonus: $"..data.Reward..(data.Perfect and " (+25%)" or "").."  /  Owned: "..data.Count.."\nYour best "..(profile and profile.Slots or 3).." go on air. Duplicates amplify income."
+  resultInfo.Text="Capture bonus: $"..C.Money(data.Reward)..(data.Perfect and " (perfect)" or "").."  /  Owned: "..data.Count.."\nYour best "..(profile and profile.Slots or 3).." go on air. Duplicates amplify income."
   notice("Captured "..c.Name.."! Your strongest signals are now broadcasting.")
  elseif kind=="End" then stop() page("Choose") notice(data)
  elseif kind=="Broadcast" then broadcast=data end
@@ -748,7 +885,7 @@ Run.RenderStepped:Connect(function(dt)
   zone.BackgroundColor3=locked and colors.Teal or colors.Purple
   local strength=math.clamp(1-math.abs(dial-target)*3,0,1)
   local percent=math.floor(progress/signal.Required*100)
-  quality.Text=now-signal.Start<.5 and "FIND THE SIGNAL" or perfect and ("PERFECT x1.25  /  "..percent.."%") or locked and ("LOCKED  /  "..percent.."%") or (dial<target and "TUNE RIGHT  >" or "<  TUNE LEFT")
+  quality.Text=now-signal.Start<.75 and "FIND THE SIGNAL" or perfect and ("PERFECT x1.10  /  "..percent.."%") or locked and ("LOCKED  /  "..percent.."%") or (dial<target and "TUNE RIGHT  >" or "<  TUNE LEFT")
   quality.TextColor3=perfect and colors.Orange or locked and colors.Teal or colors.Muted
   subtitle.Text=C.Bands[signal.Band].Name.." / "..math.max(0,math.ceil(signal.Duration-(now-signal.Start))).."s"..(signal.Special and " / MYSTERY" or signal.Risky and " / FAINT" or " / CLEAR")
   visualProgress+=(progress-visualProgress)*(1-math.exp(-dt*16))

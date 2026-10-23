@@ -59,7 +59,7 @@ for i,b in ipairs(C.Bands) do
   else notice("Upgrade your antenna to unlock this band.") end
  end)
 end
-local desc=text(choose,"Clear = easier tracking. Faint = better rare odds.\nStay in the center for 25% faster capture!",UDim2.fromOffset(16,125),UDim2.new(1,-32,0,44),14,colors.Muted)
+local desc=text(choose,"Clear = easier tracking. Faint = better rare odds.\nHold the signal steadily. Gold center gives a small 10% boost.",UDim2.fromOffset(16,125),UDim2.new(1,-32,0,44),14,colors.Muted)
 local mode=button(choose,"SIGNAL: CLEAR / EASY",UDim2.new(0,16,0,185),UDim2.new(1,-32,0,46))
 mode.Activated:Connect(function() risky=not risky mode.Text=risky and "SIGNAL: FAINT / RISKY" or "SIGNAL: CLEAR / EASY" mode.BackgroundColor3=risky and colors.Orange or colors.Teal end)
 local startButton=button(choose,"SEARCH THE STATIC",UDim2.new(0,16,1,-65),UDim2.new(1,-32,0,46),colors.Purple)
@@ -117,7 +117,7 @@ local sound=create("Sound",game:GetService("SoundService"),{Name="SignalTone",So
 local function page(which)
  choose.Visible=which=="Choose" tuning.Visible=which=="Tuning" result.Visible=which=="Result" library.Visible=which=="Library" shop.Visible=which=="Shop"
  title.Text=which=="Shop" and "STATION WORKBENCH" or which=="Library" and "YOUR SIGNAL COLLECTION" or "THE LISTENING ROOM"
- if which=="Shop" then shopFeedback.Text="Spend your broadcast income to improve your station." end
+ if which=="Shop" then shopFeedback.Text="Build upstairs with the circle pads in your station." end
  overlay.Visible=true
 end
 local function stop()
@@ -163,8 +163,8 @@ local broadcast={Band=1,Ends=0,Next=0}
 event.OnClientEvent:Connect(function(kind,data)
  if kind=="State" then
   local firstState=profile==nil
-  profile=data cash.Text="$"..data.Money.."  /  $"..data.Income.." per sec"
-  shopBalance.Text="$"..data.Money.." available / "..data.Slots.." active booths"
+  profile=data cash.Text="$"..C.Money(data.Money).."  /  $"..C.Money(data.Income).." per sec"
+  shopBalance.Text="$"..C.Money(data.Money).." available / "..data.Slots.."/12 active booths"
   if firstState then task.spawn(function()
    task.wait(.4)
    local yard=workspace:FindFirstChild("SignalYard") local plot=yard and yard:FindFirstChild(data.Plot)
@@ -183,13 +183,16 @@ event.OnClientEvent:Connect(function(kind,data)
   for id,c in ipairs(C.Creatures) do
    local count=data.Owned[tostring(id)] or 0
    cards[id].Name.Text=count>0 and c.Name or "???"
-   cards[id].Info.Text=count>0 and ("$"..math.floor(C.Value(id,count)*C.Multiplier(data.Upgrades)).." / sec   •   x"..count) or C.Bands[c.Band].Name
+   cards[id].Info.Text=count>0 and ("$"..C.Money(C.Value(id,count)*C.Multiplier(data.Upgrades)).." / sec   •   x"..count) or C.Bands[c.Band].Name
    if count>0 then total+=1 end
   end
   collectionButton.Text=total.." / 12"
   if status.Text=="Connecting to your station..." then notice("Your radio is on the desk. Tune in to catch your first brainrot!") end
  elseif kind=="Open" then open()
  elseif kind=="OpenUpgrades" then stop() page("Shop")
+ elseif kind=="FloorBuilt" then
+  notice((data.Level==2 and "Second floor built!" or "Upstairs expanded!").." "..data.Slots.." total slots. Use the staircase on the right.")
+  local chime=sound:Clone() chime.Name="BuildChime" chime.Looped=false chime.Volume=.2 chime.PlaybackSpeed=.8 chime.Parent=game:GetService("SoundService") chime:Play() game:GetService("Debris"):AddItem(chime,3)
  elseif kind=="Notice" then notice(data)
  elseif kind=="Signal" then
   signal=data progress=0 visualProgress=0 dial=.5 receivedId=nil page("Tuning")
@@ -204,7 +207,7 @@ event.OnClientEvent:Connect(function(kind,data)
   stop() page("Result") preview(data.Id)
   local c=C.Creatures[data.Id] resultName.Text=c.Name resultName.TextColor3=c.Color
   resultTitle.Text=data.Perfect and "PERFECT CAPTURE!" or data.Count==1 and "NEW SIGNAL DISCOVERED!" or "SIGNAL AMPLIFIED!"
-  resultInfo.Text="Capture bonus: $"..data.Reward..(data.Perfect and " (+25%)" or "").."  /  Owned: "..data.Count.."\nYour best "..(profile and profile.Slots or 3).." go on air. Duplicates amplify income."
+  resultInfo.Text="Capture bonus: $"..C.Money(data.Reward)..(data.Perfect and " (perfect)" or "").."  /  Owned: "..data.Count.."\nYour best "..(profile and profile.Slots or 3).." go on air. Duplicates amplify income."
   notice("Captured "..c.Name.."! Your strongest signals are now broadcasting.")
  elseif kind=="End" then stop() page("Choose") notice(data)
  elseif kind=="Broadcast" then broadcast=data end
@@ -287,7 +290,7 @@ Run.RenderStepped:Connect(function(dt)
   zone.BackgroundColor3=locked and colors.Teal or colors.Purple
   local strength=math.clamp(1-math.abs(dial-target)*3,0,1)
   local percent=math.floor(progress/signal.Required*100)
-  quality.Text=now-signal.Start<.5 and "FIND THE SIGNAL" or perfect and ("PERFECT x1.25  /  "..percent.."%") or locked and ("LOCKED  /  "..percent.."%") or (dial<target and "TUNE RIGHT  >" or "<  TUNE LEFT")
+  quality.Text=now-signal.Start<.75 and "FIND THE SIGNAL" or perfect and ("PERFECT x1.10  /  "..percent.."%") or locked and ("LOCKED  /  "..percent.."%") or (dial<target and "TUNE RIGHT  >" or "<  TUNE LEFT")
   quality.TextColor3=perfect and colors.Orange or locked and colors.Teal or colors.Muted
   subtitle.Text=C.Bands[signal.Band].Name.." / "..math.max(0,math.ceil(signal.Duration-(now-signal.Start))).."s"..(signal.Special and " / MYSTERY" or signal.Risky and " / FAINT" or " / CLEAR")
   visualProgress+=(progress-visualProgress)*(1-math.exp(-dt*16))

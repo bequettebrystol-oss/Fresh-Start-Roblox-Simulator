@@ -1,4 +1,5 @@
 local W={}
+local C=require(game:GetService("ReplicatedStorage"):WaitForChild("SignalConfig"))
 local teal=Color3.fromRGB(78,238,204)
 local navy=Color3.fromRGB(25,35,56)
 local function part(parent,name,size,pos,color,material,shape)
@@ -14,6 +15,65 @@ local function label(parent,text,offset,size,color)
 end
 function W.Creature(parent,id,color,shape,pos)
  return require(game:GetService("ReplicatedStorage"):WaitForChild("SignalCreature")).Build(parent,id,pos,false)
+end
+local function purchasePad(plot,name,pos,cost,title)
+ local p=part(plot,name,Vector3.new(.35,10,10),pos,Color3.fromRGB(255,168,112),Enum.Material.Neon,"Cylinder")
+ p.CFrame=CFrame.new(pos)*CFrame.Angles(0,0,math.pi/2) p.CanCollide=false
+ label(p,title.."\n+3 SLOTS / $"..C.Money(cost).."\nWALK ONTO THIS PAD",Vector3.new(0,3.5,0),200).TextSize=13
+ p.Label.MaxDistance=60
+ return p
+end
+function W.UpdatePads(plot,data)
+ local level=C.FloorLevel(data)
+ for index,name in ipairs({"FloorPad","ExpansionPad"}) do
+  local pad=plot:FindFirstChild(name)
+  if pad then
+   local visible=level==index
+   pad.Transparency=visible and .1 or 1 pad.CanTouch=visible pad.Label.Enabled=visible
+   pad.Color=(data.Money or 0)>=C.FloorCosts[index] and teal or Color3.fromRGB(255,168,112)
+  end
+ end
+end
+function W.SetFloor(plot,level,animate)
+ level=C.FloorLevel({Floors=level})
+ local o=plot.Deck.Position
+ local loft=plot:FindFirstChild("SecondFloor")
+ if level==1 and loft then loft:Destroy() loft=nil end
+ plot.Roof.Position=o+Vector3.new(0,level>=2 and 30 or 15,7)
+ plot.RoofTrim.Position=o+Vector3.new(0,level>=2 and 29.7 or 14.7,-15.2)
+ if level>=2 and not loft then
+  loft=Instance.new("Model") loft.Name="SecondFloor"
+  local wood=Color3.fromRGB(82,98,116)
+  part(loft,"UpperDeck",Vector3.new(60,1,44),o+Vector3.new(-8,15,7),wood,Enum.Material.WoodPlanks)
+  part(loft,"StairLanding",Vector3.new(16,1,18),o+Vector3.new(30,15,20),wood,Enum.Material.WoodPlanks)
+  part(loft,"UpperTrim",Vector3.new(60,.25,.3),o+Vector3.new(-8,14.7,-15.2),teal,Enum.Material.Neon)
+  for _,x in ipairs({-37.5,37.5}) do
+   part(loft,"SideRail",Vector3.new(.5,3,44),o+Vector3.new(x,17,7),navy)
+   for _,z in ipairs({-14,28}) do part(loft,"RoofSupport",Vector3.new(.7,15,.7),o+Vector3.new(x,22.5,z),navy) end
+  end
+  part(loft,"FrontRail",Vector3.new(60,3,.5),o+Vector3.new(-8,17,-14.8),navy)
+  part(loft,"BackRail",Vector3.new(76,3,.5),o+Vector3.new(0,17,28.5),navy)
+  part(loft,"StairwellGuard",Vector3.new(.5,3,26),o+Vector3.new(22,17,-2),navy)
+  for step=1,12 do
+   part(loft,"Step"..step,Vector3.new(9,step*1.25,2.5),o+Vector3.new(30,.5+step*.625,-17.5+(step-1)*2.5),wood)
+  end
+  for _,x in ipairs({24.9,35.1}) do
+   local a=o+Vector3.new(x,3.2,-18.75) local b=o+Vector3.new(x,18.2,11.25)
+   local rail=part(loft,"StairHandrail",Vector3.new(.3,.3,(b-a).Magnitude),(a+b)/2,teal,Enum.Material.Neon)
+   rail.CFrame=CFrame.lookAt((a+b)/2,b)
+   for step=1,12,3 do part(loft,"HandrailPost",Vector3.new(.3,2.5,.3),o+Vector3.new(x,1.75+step*1.25,-17.5+(step-1)*2.5),navy) end
+  end
+  local sign=part(loft,"LoftSign",Vector3.new(1,1,1),o+Vector3.new(-8,23,27),navy) sign.Transparency=1 sign.CanCollide=false
+  label(sign,"UPSTAIRS BROADCAST LOUNGE",Vector3.zero,300,teal).TextSize=14
+  loft.Parent=plot
+  if animate then
+   for _,p in ipairs(loft:GetChildren()) do if p:IsA("BasePart") and p.Transparency<1 then
+    local final=p.Transparency p.Transparency=1
+    game:GetService("TweenService"):Create(p,TweenInfo.new(.7),{Transparency=final}):Play()
+   end end
+  end
+ end
+ plot:SetAttribute("BuiltFloorLevel",level)
 end
 function W.Build()
  local storage=game:GetService("ServerStorage")
@@ -64,15 +124,19 @@ function W.Build()
    local bar=part(plot,"Antenna"..j,Vector3.new(8+j*3,.25,.25),o+Vector3.new(-31,30+j*3,23),accent,Enum.Material.Neon)
    bar.Transparency=j==1 and 0 or .85
   end
-  for j=1,6 do
-   local p=o+Vector3.new(-30+(j-1)*12,0,16)
+  for j=1,12 do
+   local p=j<=6 and o+Vector3.new(-30+(j-1)*12,0,16) or o+Vector3.new(-26+((j-7)%3)*20,15,j<=9 and 3 or 20)
    part(plot,"Booth"..j,Vector3.new(7,.5,7),p+Vector3.new(0,.8,0),accent,Enum.Material.Neon)
    part(plot,"BoothPad"..j,Vector3.new(6.6,.3,6.6),p+Vector3.new(0,1.15,0),navy)
    local anchor=part(plot,"Display"..j,Vector3.new(.1,.1,.1),p+Vector3.new(0,3,0),navy) anchor.Transparency=1 anchor.CanCollide=false
    label(anchor,"BOOTH "..j..(j<=3 and "\nEMPTY" or "\nLOCKED"),Vector3.new(0,3,0),112,accent).TextSize=12
    anchor.Label.Size=UDim2.fromOffset(112,48) anchor.Label.MaxDistance=65
-   plot["Booth"..j].Transparency=j<=3 and 0 or .8
+   plot["Booth"..j].Transparency=j<=3 and 0 or j<=6 and .8 or 1
+   if j>6 then plot["BoothPad"..j].Transparency=1 plot["BoothPad"..j].CanCollide=false plot["Booth"..j].CanCollide=false anchor.Label.Enabled=false end
   end
+  purchasePad(plot,"FloorPad",o+Vector3.new(13,.8,-23),C.FloorCosts[1],"BUILD SECOND FLOOR")
+  purchasePad(plot,"ExpansionPad",o+Vector3.new(-25,15.8,-10),C.FloorCosts[2],"EXPAND UPSTAIRS")
+  W.UpdatePads(plot,{Floors=1,Money=0})
   local spawn=Instance.new("SpawnLocation") spawn.Name="Arrival" spawn.Size=Vector3.new(6,.3,6) spawn.Position=o+Vector3.new(-24,1,-22) spawn.Anchored=true spawn.Transparency=1 spawn.CanCollide=false spawn.Enabled=false spawn.Parent=plot
   spawn.CFrame=CFrame.new(spawn.Position)*CFrame.Angles(0,math.pi,0)
   task.wait()

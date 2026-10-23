@@ -8,6 +8,7 @@ local yard=workspace:FindFirstChild("SignalYard") or W.Build()
 local event=RS:FindFirstChild("SignalEvent") or Instance.new("RemoteEvent") event.Name="SignalEvent" event.Parent=RS
 local store=DSS:GetDataStore("BrainrotSignal_v1")
 local profiles={} local claims={} local sessions={} local rate={}
+local floorDebounce={} local floorOccupants={}
 local rng=Random.new()
 local nextBroadcast=workspace:GetServerTimeNow()+90
 local broadcastEnd=0
@@ -18,19 +19,26 @@ local function notify(p,msg) send(p,"Notice",msg) end
 local function state(p)
  local d=profiles[p] if not d or not d.Ready then return end
  local best,income=C.Best(d.Owned,d)
- send(p,"State",{Money=math.floor(d.Money),Antenna=d.Antenna,Receiver=d.Receiver,Upgrades=C.Levels(d),Slots=C.Slots(d),Owned=d.Owned,Income=income,Best=best,Plot=d.Plot.Name,Save=d.Save,Ready=true})
+ send(p,"State",{Money=math.floor(d.Money*100+.5)/100,Antenna=d.Antenna,Receiver=d.Receiver,Floors=d.Floors,Upgrades=C.Levels(d),Slots=C.Slots(d),Owned=d.Owned,Income=income,Best=best,Plot=d.Plot.Name,Save=d.Save,Ready=true})
 end
-local function display(p)
+local function display(p,animate)
  local d=profiles[p] if not d then return end
+ W.SetFloor(d.Plot,d.Floors,animate)
  local best=C.Best(d.Owned,d)
  local old=d.Plot:FindFirstChild("Performers") if old then old:Destroy() end
  local folder=Instance.new("Folder") folder.Name="Performers" folder.Parent=d.Plot
  local slots=C.Slots(d)
- for j=1,6 do
+ local rank=0
+ for j=1,12 do
   local anchor=d.Plot:FindFirstChild("Display"..j)
-  local entry=j<=slots and best[j] or nil
-  anchor.Label.TextLabel.Text=entry and (C.Creatures[entry.Id].Name.."\n$"..math.floor(entry.Value).." / sec") or ("BOOTH "..j..(j<=slots and "\nEMPTY" or "\nLOCKED"))
-  d.Plot["Booth"..j].Transparency=j<=slots and 0 or .8
+  local active=C.SlotActive(d,j) local visible=j<=6 or d.Floors>=2
+  if active then rank+=1 end
+  local entry=active and best[rank] or nil
+  anchor.Label.Enabled=visible
+  anchor.Label.TextLabel.Text=entry and (C.Creatures[entry.Id].Name.."\n$"..C.Money(entry.Value).." / sec") or ("BOOTH "..j..(active and "\nEMPTY" or "\nLOCKED"))
+  d.Plot["Booth"..j].Transparency=not visible and 1 or active and 0 or .8
+  d.Plot["Booth"..j].CanCollide=visible
+  d.Plot["BoothPad"..j].Transparency=visible and 0 or 1 d.Plot["BoothPad"..j].CanCollide=visible
   if entry then
    local c=C.Creatures[entry.Id]
    local m=W.Creature(folder,entry.Id,c.Color,c.Shape,anchor.Position)
@@ -44,6 +52,8 @@ local function display(p)
  d.Plot.ReceiverRack.Size=Vector3.new(3,3+(d.Receiver-1)*.3,3)
  for _,u in ipairs(C.Upgrades) do d.Plot:SetAttribute(u.Key,d[u.Key]) end
  d.Plot:SetAttribute("ActiveBooths",slots)
+ d.Plot:SetAttribute("Floors",d.Floors)
+ W.UpdatePads(d.Plot,d)
 end
 local function near(p)
  local d=profiles[p] local char=p.Character local root=char and char:FindFirstChild("HumanoidRootPart")
@@ -52,7 +62,7 @@ end
 local function save(p)
  local d=profiles[p] if not d or not d.Save or d.Saving then return end
  d.Saving=true
- local snapshot={Money=math.floor(d.Money),Antenna=d.Antenna,Receiver=d.Receiver,Owned=table.clone(d.Owned),Session=d.Token,Lease=os.time()+180}
+ local snapshot={Money=math.floor(d.Money*100+.5)/100,Floors=d.Floors,Antenna=d.Antenna,Receiver=d.Receiver,Owned=table.clone(d.Owned),Session=d.Token,Lease=os.time()+180}
  for _,u in ipairs(C.Upgrades) do snapshot[u.Key]=d[u.Key] end
  local ok,result=pcall(function()
   return store:UpdateAsync("u"..p.UserId,function(previous)
@@ -73,7 +83,7 @@ local function join(p)
  local plot
  for i=1,6 do if not claims[i] then claims[i]=p plot=yard["Station"..i] break end end
  if not plot then p:Kick("All six stations are occupied. Please join another server.") return end
- local d={Money=0,Antenna=1,Receiver=1,Owned={},Plot=plot,Save=false,Ready=false,Token=game:GetService("HttpService"):GenerateGUID(false)}
+ local d={Money=0,Floors=1,Antenna=1,Receiver=1,Owned={},Plot=plot,Save=false,Ready=false,Token=game:GetService("HttpService"):GenerateGUID(false)}
  for key,value in pairs(C.Levels({})) do d[key]=value end
  profiles[p]=d
  if not Run:IsStudio() then
@@ -86,6 +96,7 @@ local function join(p)
   end)
   if ok and result and result.Session==d.Token then
    d.Money=math.clamp(tonumber(result.Money) or 0,0,1e12)
+   d.Floors=C.FloorLevel(result)
    for key,value in pairs(C.Levels(result)) do d[key]=value end
    for key,count in pairs(type(result.Owned)=="table" and result.Owned or {}) do
     local id=tonumber(key)
@@ -120,9 +131,35 @@ local function leave(p)
   d.Plot:SetAttribute("Owner",nil)
   d.Plot.StationSign.Label.TextLabel.Text="AVAILABLE STATION"
   local performers=d.Plot:FindFirstChild("Performers") if performers then performers:Destroy() end
-  for j=1,6 do d.Plot["Display"..j].Label.TextLabel.Text="BOOTH "..j..(j<=3 and "\nEMPTY" or "\nLOCKED") end
+  W.SetFloor(d.Plot,1)
+  for j=1,12 do
+   d.Plot["Display"..j].Label.TextLabel.Text="BOOTH "..j..(j<=3 and "\nEMPTY" or "\nLOCKED")
+   d.Plot["Display"..j].Label.Enabled=j<=6
+   d.Plot["Booth"..j].Transparency=j<=3 and 0 or j<=6 and .8 or 1
+   d.Plot["BoothPad"..j].Transparency=j<=6 and 0 or 1
+   d.Plot["Booth"..j].CanCollide=j<=6 d.Plot["BoothPad"..j].CanCollide=j<=6
+  end
+  W.UpdatePads(d.Plot,{Floors=1,Money=0})
  end
- profiles[p]=nil sessions[p]=nil rate[p]=nil
+ profiles[p]=nil sessions[p]=nil rate[p]=nil floorDebounce[p]=nil floorOccupants[p]=nil
+end
+local function buyFloor(p,plot,index,pad)
+ local d=profiles[p]
+ if not d or not d.Ready or d.Removing or (floorDebounce[p] or 0)>os.clock() then return end
+ floorDebounce[p]=os.clock()+1.5
+ if d.Plot~=plot then notify(p,"This building pad belongs to another station.") return end
+ if d.Floors~=index then return end
+ local char=p.Character local root=char and char:FindFirstChild("HumanoidRootPart") local hum=char and char:FindFirstChildOfClass("Humanoid")
+ if not root or not hum or hum.Health<=0 then return end
+ local delta=root.Position-pad.Position
+ if math.abs(delta.Y)>5 or Vector2.new(delta.X,delta.Z).Magnitude>5.5 then return end
+ if sessions[p] then notify(p,"Close your current signal before using a building pad.") return end
+ local cost=C.FloorCosts[index]
+ if d.Money<cost then notify(p,"Need $"..C.Money(cost-d.Money).." more for this building pad.") return end
+ d.Money-=cost d.Floors+=1
+ display(p,true) state(p)
+ send(p,"FloorBuilt",{Level=d.Floors,Slots=C.Slots(d),Cost=cost})
+ task.spawn(save,p)
 end
 local function start(p,band,risky)
  local d=profiles[p] if not d or not near(p) then notify(p,"Walk to your radio to tune in.") return end
@@ -180,13 +217,25 @@ end
 Players.PlayerAdded:Connect(join)
 Players.PlayerRemoving:Connect(leave)
 for _,p in ipairs(Players:GetPlayers()) do task.spawn(join,p) end
-local tickIncome=0 local tickSave=0 local tickCapture=0
+local tickIncome=0 local tickSave=0 local tickCapture=0 local tickPads=0
 Run.Heartbeat:Connect(function(dt)
- tickIncome+=dt tickSave+=dt tickCapture+=dt
+ tickIncome+=dt tickSave+=dt tickCapture+=dt tickPads+=dt
  local now=workspace:GetServerTimeNow()
  if now>=nextBroadcast then
   broadcastBand=rng:NextInteger(1,3) broadcastEnd=now+45 nextBroadcast=now+180
   event:FireAllClients("Broadcast",{Band=broadcastBand,Ends=broadcastEnd,Next=nextBroadcast})
+ end
+ if tickPads>=.15 then
+  tickPads=0
+  for p,d in pairs(profiles) do
+   local stage=d.Floors local char=p.Character local root=char and char:FindFirstChild("HumanoidRootPart")
+   local pad=stage<=2 and d.Plot[stage==1 and "FloorPad" or "ExpansionPad"] or nil
+   local delta=root and pad and root.Position-pad.Position
+   local inside=delta and math.abs(delta.Y)<=5 and Vector2.new(delta.X,delta.Z).Magnitude<=5.5
+   if inside then
+    if floorOccupants[p]~=stage then floorOccupants[p]=stage buyFloor(p,d.Plot,stage,pad) end
+   else floorOccupants[p]=nil end
+  end
  end
  if tickCapture>=.1 then
   local step=math.min(tickCapture,.25) tickCapture=0
@@ -198,16 +247,16 @@ Run.Heartbeat:Connect(function(dt)
     local locked=now-s.LastDial<.6 and distance<=s.Width/2
     local perfect=locked and distance<=s.Width*.22
     s.Missed=locked and 0 or s.Missed+step
-    if now-s.Start>=.5 then
+    if now-s.Start>=.75 then
      if locked then s.LockTime+=step if perfect then s.PerfectTime+=step end end
-     s.Progress=math.clamp(s.Progress+(locked and step*(perfect and 1.25 or 1) or s.Missed>s.Grace and -step*.30 or 0),0,s.Required)
+     s.Progress=math.clamp(s.Progress+(locked and step*(perfect and C.PerfectSpeed or 1) or s.Missed>s.Grace and -step*.30 or 0),0,s.Required)
     end
     send(p,"Progress",{Progress=s.Progress,Locked=locked,Perfect=perfect,Holding=not locked and s.Missed<=s.Grace,Id=s.Progress>s.Required*.4 and s.Id or nil})
     if s.Progress>=s.Required then
      local d=profiles[p] local key=tostring(s.Id)
      d.Owned[key]=(d.Owned[key] or 0)+1
      local perfectCatch=s.PerfectTime/math.max(.01,s.LockTime)>=.6
-     local reward=math.floor(C.Creatures[s.Id].Income*3*(perfectCatch and 1.25 or 1))
+     local reward=C.CaptureReward(s.Id,perfectCatch)
      d.Money+=reward
      sessions[p]=nil display(p) state(p)
      send(p,"Caught",{Id=s.Id,Count=d.Owned[key],Special=s.Special,Perfect=perfectCatch,Reward=reward})
@@ -217,7 +266,7 @@ Run.Heartbeat:Connect(function(dt)
  end
  if tickIncome>=1 then
   local elapsed=math.floor(tickIncome) tickIncome-=elapsed
-  for p,d in pairs(profiles) do local _,income=C.Best(d.Owned,d) d.Money=math.min(1e12,d.Money+income*elapsed) state(p) end
+  for p,d in pairs(profiles) do local _,income=C.Best(d.Owned,d) d.Money=math.min(1e12,d.Money+income*elapsed) W.UpdatePads(d.Plot,d) state(p) end
  end
  if tickSave>=60 then tickSave=0 for p,d in pairs(profiles) do if not d.Removing then task.spawn(save,p) end end end
 end)
