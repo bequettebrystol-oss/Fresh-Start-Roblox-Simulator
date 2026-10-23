@@ -1,0 +1,19 @@
+{
+  "name": "Brainrot Signal Simulator",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "SignalConfig": { "$path": "game/Config.luau" },
+      "SignalCreature": { "$path": "game/Creature.luau" }
+    },
+    "ServerScriptService": {
+      "SignalWorld": { "$path": "game/World.luau" },
+      "SignalServer": { "$path": "game/Server.server.luau" }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "SignalClient": { "$path": "game/Client.client.luau" }
+      }
+    }
+  }
+}
