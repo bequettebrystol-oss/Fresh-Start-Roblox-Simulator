@@ -2,13 +2,26 @@
 
 A first playable Roblox simulator built for **Fresh Start**, place `86677440142411`.
 
-Tune a radio, follow a moving frequency window, capture strange characters, and let your best three performers earn money. Upgrade your antenna to unlock three bands and your receiver to make captures easier. Twelve original characters have distinct colors and accessories. Duplicates amplify a character's income, up to ten copies. The collection retains additional copies.
+Tune a radio, follow a moving frequency window, capture strange characters, and let your best performers earn money. Twelve original characters have distinct colors and accessories. Duplicates amplify a character's income, up to ten copies. The collection retains additional copies. Stations now have 76×58-stud decks, higher ceilings, an equipment workbench, a wider porch, and room for six booths.
 
 ## Play
 
-In the connected Fresh Start Studio project, press **Play**, then use **Tune Radio** or the prompt on your desk. Choose a band and clear/easy or faint/risky reception. Drag the white marker, hold the left/right buttons, or use A/D or arrow keys to follow the glowing target. Hold a total of 3.5 seconds of lock; missed tracking slowly reduces progress. Signals time out after 35 seconds.
+In the connected Fresh Start Studio project, press **Play**, then use **Tune Radio** or the prompt on your desk. Choose a band and clear/easy or faint/risky reception. Drag the white marker, hold the left/right buttons, or use A/D or arrow keys to follow the glowing target. Hold Shift for finer keyboard control. Directional hints and a faint forecast marker help you follow the target.
 
-Your strongest three different characters automatically occupy your booths. Money arrives every second. Antennas cost $350 and $2,400; receiver upgrades cost $100, $300, $900, and $2,500. A mystery broadcast first appears after 90 seconds, then every three minutes, lasting 45 seconds and improving rare odds in all unlocked bands.
+The base capture requires 3.5 seconds of lock. Staying inside the gold center builds progress 25% faster. Brief slips preserve progress for a grace period before it decays at 0.30 seconds per second. There is a half-second acquisition period before progress begins; signals time out after 40 seconds. Sustained perfect tracking earns 25% extra capture cash. Signal position and input freshness are checked on the server, with bounded server-measured latency compensation.
+
+Your strongest three different characters initially occupy your booths; booth upgrades expand this to six. Money arrives every second, boosted by broadcast amplifiers. Use **Upgrades** or the prompt on the equipment workbench to browse current/next effects, prices, and levels. Purchases require enough money and cannot occur during a capture. Opening the workbench cancels an active capture.
+
+| Upgrade | Maximum level | Effect | Purchase prices |
+| --- | --- | --- | --- |
+| Antenna | 3 | Unlock Moonwave and Voidcast | $350 / $2,400 |
+| Receiver | 8 | Wider tuning window, +2.2 percentage points per level | $100 / $300 / $900 / $2,500 / $6,000 / $14,000 / $30,000 |
+| Signal stabilizer | 5 | 8% slower drift per level; grace grows from 0.20s to 0.44s | $125 / $450 / $1,500 / $4,500 |
+| Signal decoder | 5 | Required lock falls from 3.5s to 2.1s | $180 / $650 / $2,200 / $7,000 |
+| Broadcast amplifier | 6 | +25% broadcast income per level, up to +125% | $150 / $550 / $1,800 / $5,500 / $16,000 |
+| Extra broadcast booths | 4 | Increase active booths from three to six | $500 / $2,000 / $6,500 |
+
+A mystery broadcast first appears after 90 seconds, then every three minutes, lasting 45 seconds and improving rare odds in all unlocked bands. Faint signals retain better rare odds than clear signals during these events.
 
 ## Source and recovery
 
@@ -27,7 +40,7 @@ The GitHub build contains source plus a reproducible starter place; the connecte
 
 ## Saving and release checks
 
-Studio sessions intentionally do not read or write production player data. In a published Roblox server, the game uses `BrainrotSignal_v1` with periodic saves, session leases, leave saves, and shutdown saves. If initial data access fails, the session is clearly marked as temporary and does not overwrite stored progress. Test live saving and rejoining in a private published server before release.
+Studio sessions intentionally do not read or write production player data. In a published Roblox server, the game uses `BrainrotSignal_v1` with periodic saves, session leases, leave saves, and shutdown saves. Existing antenna, receiver, collection, and currency data are retained; new upgrade categories default to level one. All six upgrade levels are saved. If initial data access fails, the session is clearly marked as temporary and does not overwrite stored progress. Test live saving and rejoining in a private published server before release.
 
 The yard supports **six players**. Set the Roblox experience's server capacity to six before public release. Multi-client isolation, disconnect/rejoin persistence, and live-service failures still need a published-server test. Character audio currently uses a bundled radio ping whose pitch changes with signal strength; bespoke creature voices and static are future polish.
 

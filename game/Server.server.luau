@@ -17,18 +17,20 @@ local function send(p,kind,data) if p.Parent then event:FireClient(p,kind,data) 
 local function notify(p,msg) send(p,"Notice",msg) end
 local function state(p)
  local d=profiles[p] if not d or not d.Ready then return end
- local best,income=C.Best(d.Owned)
- send(p,"State",{Money=math.floor(d.Money),Antenna=d.Antenna,Receiver=d.Receiver,Owned=d.Owned,Income=income,Best=best,Plot=d.Plot.Name,Save=d.Save,Ready=true})
+ local best,income=C.Best(d.Owned,d)
+ send(p,"State",{Money=math.floor(d.Money),Antenna=d.Antenna,Receiver=d.Receiver,Upgrades=C.Levels(d),Slots=C.Slots(d),Owned=d.Owned,Income=income,Best=best,Plot=d.Plot.Name,Save=d.Save,Ready=true})
 end
 local function display(p)
  local d=profiles[p] if not d then return end
- local best=C.Best(d.Owned)
+ local best=C.Best(d.Owned,d)
  local old=d.Plot:FindFirstChild("Performers") if old then old:Destroy() end
  local folder=Instance.new("Folder") folder.Name="Performers" folder.Parent=d.Plot
- for j=1,3 do
+ local slots=C.Slots(d)
+ for j=1,6 do
   local anchor=d.Plot:FindFirstChild("Display"..j)
-  local entry=best[j]
-  anchor.Label.TextLabel.Text=entry and (C.Creatures[entry.Id].Name.."\n$"..math.floor(entry.Value).." / sec") or "EMPTY BOOTH"
+  local entry=j<=slots and best[j] or nil
+  anchor.Label.TextLabel.Text=entry and (C.Creatures[entry.Id].Name.."\n$"..math.floor(entry.Value).." / sec") or ("BOOTH "..j..(j<=slots and "\nEMPTY" or "\nLOCKED"))
+  d.Plot["Booth"..j].Transparency=j<=slots and 0 or .8
   if entry then
    local c=C.Creatures[entry.Id]
    local m=W.Creature(folder,entry.Id,c.Color,c.Shape,anchor.Position)
@@ -36,6 +38,12 @@ local function display(p)
   end
  end
  for j=1,3 do d.Plot["Antenna"..j].Transparency=j<=d.Antenna and 0 or .85 end
+ for j=1,5 do d.Plot["Amplifier"..j].Transparency=j<d.Amplifier and 0 or .85 end
+ d.Plot.StabilizerCoil.Transparency=.7-(d.Stabilizer-1)*.15
+ d.Plot.DecoderCore.Transparency=.7-(d.Decoder-1)*.15
+ d.Plot.ReceiverRack.Size=Vector3.new(3,3+(d.Receiver-1)*.3,3)
+ for _,u in ipairs(C.Upgrades) do d.Plot:SetAttribute(u.Key,d[u.Key]) end
+ d.Plot:SetAttribute("ActiveBooths",slots)
 end
 local function near(p)
  local d=profiles[p] local char=p.Character local root=char and char:FindFirstChild("HumanoidRootPart")
@@ -45,6 +53,7 @@ local function save(p)
  local d=profiles[p] if not d or not d.Save or d.Saving then return end
  d.Saving=true
  local snapshot={Money=math.floor(d.Money),Antenna=d.Antenna,Receiver=d.Receiver,Owned=table.clone(d.Owned),Session=d.Token,Lease=os.time()+180}
+ for _,u in ipairs(C.Upgrades) do snapshot[u.Key]=d[u.Key] end
  local ok,result=pcall(function()
   return store:UpdateAsync("u"..p.UserId,function(previous)
    if previous and previous.Session~=d.Token then return nil end
@@ -65,6 +74,7 @@ local function join(p)
  for i=1,6 do if not claims[i] then claims[i]=p plot=yard["Station"..i] break end end
  if not plot then p:Kick("All six stations are occupied. Please join another server.") return end
  local d={Money=0,Antenna=1,Receiver=1,Owned={},Plot=plot,Save=false,Ready=false,Token=game:GetService("HttpService"):GenerateGUID(false)}
+ for key,value in pairs(C.Levels({})) do d[key]=value end
  profiles[p]=d
  if not Run:IsStudio() then
   local ok,result=pcall(function()
@@ -76,8 +86,7 @@ local function join(p)
   end)
   if ok and result and result.Session==d.Token then
    d.Money=math.clamp(tonumber(result.Money) or 0,0,1e12)
-   d.Antenna=math.clamp(math.floor(tonumber(result.Antenna) or 1),1,3)
-   d.Receiver=math.clamp(math.floor(tonumber(result.Receiver) or 1),1,5)
+   for key,value in pairs(C.Levels(result)) do d[key]=value end
    for key,count in pairs(type(result.Owned)=="table" and result.Owned or {}) do
     local id=tonumber(key)
     if id and C.Creatures[id] and type(count)=="number" and count==count then d.Owned[tostring(id)]=math.clamp(math.floor(count),1,100000) end
@@ -111,7 +120,7 @@ local function leave(p)
   d.Plot:SetAttribute("Owner",nil)
   d.Plot.StationSign.Label.TextLabel.Text="AVAILABLE STATION"
   local performers=d.Plot:FindFirstChild("Performers") if performers then performers:Destroy() end
-  for j=1,3 do d.Plot["Display"..j].Label.TextLabel.Text="EMPTY BOOTH" end
+  for j=1,6 do d.Plot["Display"..j].Label.TextLabel.Text="BOOTH "..j..(j<=3 and "\nEMPTY" or "\nLOCKED") end
  end
  profiles[p]=nil sessions[p]=nil rate[p]=nil
 end
@@ -123,14 +132,17 @@ local function start(p,band,risky)
  local special=workspace:GetServerTimeNow()<broadcastEnd
  local roll=rng:NextNumber(0,100) local total=0 local id
  local weights=risky and {28,34,28,10} or {50,30,16,4}
- if special then weights={20,30,32,18} end
+ if special then weights=risky and {18,28,32,22} or {30,32,26,12} end
  for i=1,4 do total+=weights[i] if roll<=total then id=(band-1)*4+i break end end
  id=id or band*4
  local now=workspace:GetServerTimeNow()
- local s={Id=id,Start=now,Progress=0,Dial=.5,LastDial=0,Band=band,Risky=risky,Special=special,
-  Phase=rng:NextNumber(0,6.28),Speed=(risky and 1.7 or .9)+band*.15,Width=(risky and .10 or .17)+(d.Receiver-1)*.022,LastSend=0}
+ local s=C.SignalStats(d,band,risky)
+ s.Id=id s.Start=now s.Progress=0 s.Dial=.5 s.LastDial=0 s.Band=band s.Risky=risky s.Special=special
+ s.Phase=rng:NextNumber(0,6.28) s.Missed=0 s.PerfectTime=0 s.LockTime=0
+ local pingOK,ping=pcall(function() return p:GetNetworkPing() end)
+ s.Ping=pingOK and math.clamp(ping,0,.18) or 0
  sessions[p]=s
- send(p,"Signal",{Start=s.Start,Phase=s.Phase,Speed=s.Speed,Width=s.Width,Risky=risky,Band=band,Special=special})
+ send(p,"Signal",{Start=s.Start,Phase=s.Phase,Speed=s.Speed,Width=s.Width,Amplitude=s.Amplitude,Required=s.Required,Grace=s.Grace,Duration=s.Duration,Risky=risky,Band=band,Special=special})
 end
 event.OnServerEvent:Connect(function(p,command,a,b)
  if type(command)~="string" or not profiles[p] or not profiles[p].Ready or profiles[p].Removing then return end
@@ -145,24 +157,24 @@ event.OnServerEvent:Connect(function(p,command,a,b)
   if s and type(a)=="number" and a==a and a>=0 and a<=1 then s.Dial=a s.LastDial=workspace:GetServerTimeNow() end
  elseif command=="Cancel" then sessions[p]=nil
  elseif command=="Upgrade" and not sessions[p] then
-  if a=="Antenna" then
-   local cost=C.AntennaCosts[d.Antenna]
-   if not cost then notify(p,"Antenna is fully upgraded.") return end
-   if d.Money<cost then notify(p,"Need $"..cost.." for the next antenna.") return end
-   d.Money-=cost d.Antenna+=1 notify(p,C.Bands[d.Antenna].Name.." unlocked!")
-  elseif a=="Receiver" then
-   local cost=C.ReceiverCosts[d.Receiver]
-   if not cost then notify(p,"Receiver is fully upgraded.") return end
-   if d.Money<cost then notify(p,"Need $"..cost.." for the next receiver.") return end
-   d.Money-=cost d.Receiver+=1 notify(p,"Receiver upgraded: a wider tuning window!")
-  else return end
+  local upgrade
+  for _,u in ipairs(C.Upgrades) do if u.Key==a then upgrade=u break end end
+  if not upgrade then return end
+  local level=d[upgrade.Key] local cost=upgrade.Costs[level]
+  if not cost then notify(p,upgrade.Name.." is fully upgraded.") return end
+  if d.Money<cost then notify(p,"Need $"..cost.." for "..upgrade.Name..".") return end
+  d.Money-=cost d[upgrade.Key]+=1 notify(p,upgrade.Name.." upgraded! "..C.Description(upgrade.Key,d[upgrade.Key]))
   display(p) state(p)
+ elseif command=="Upgrade" then notify(p,"Finish or close your current signal before upgrading.")
  end
 end)
 for i=1,6 do
  local plot=yard["Station"..i]
  plot.Radio.TunePrompt.Triggered:Connect(function(p)
   local d=profiles[p] if d and d.Plot==plot then send(p,"Open",{}) else notify(p,"This is another player's radio. Find your named station.") end
+ end)
+ plot.ReceiverRack.UpgradePrompt.Triggered:Connect(function(p)
+  local d=profiles[p] if d and d.Plot==plot then send(p,"OpenUpgrades",{}) else notify(p,"Use the workbench in your station.") end
  end)
 end
 Players.PlayerAdded:Connect(join)
@@ -179,25 +191,33 @@ Run.Heartbeat:Connect(function(dt)
  if tickCapture>=.1 then
   local step=math.min(tickCapture,.25) tickCapture=0
   for p,s in pairs(sessions) do
-   if not near(p) or now-s.Start>35 then sessions[p]=nil send(p,"End","Signal lost. Try another frequency.")
+   if not near(p) or now-s.Start>s.Duration then sessions[p]=nil send(p,"End","Signal lost. Try another frequency.")
    else
-    local target=.5+.34*math.sin((now-s.Start)*s.Speed+s.Phase)
-    local locked=now-s.LastDial<.65 and math.abs(s.Dial-target)<=s.Width/2
-    s.Progress=math.clamp(s.Progress+(locked and step or -step*.45),0,3.5)
-    send(p,"Progress",{Progress=s.Progress,Locked=locked,Id=s.Progress>1.5 and s.Id or nil})
-    if s.Progress>=3.5 then
+    local target=C.Target(s,now-s.Ping)
+    local distance=math.abs(s.Dial-target)
+    local locked=now-s.LastDial<.6 and distance<=s.Width/2
+    local perfect=locked and distance<=s.Width*.22
+    s.Missed=locked and 0 or s.Missed+step
+    if now-s.Start>=.5 then
+     if locked then s.LockTime+=step if perfect then s.PerfectTime+=step end end
+     s.Progress=math.clamp(s.Progress+(locked and step*(perfect and 1.25 or 1) or s.Missed>s.Grace and -step*.30 or 0),0,s.Required)
+    end
+    send(p,"Progress",{Progress=s.Progress,Locked=locked,Perfect=perfect,Holding=not locked and s.Missed<=s.Grace,Id=s.Progress>s.Required*.4 and s.Id or nil})
+    if s.Progress>=s.Required then
      local d=profiles[p] local key=tostring(s.Id)
      d.Owned[key]=(d.Owned[key] or 0)+1
-     d.Money+=C.Creatures[s.Id].Income*3
+     local perfectCatch=s.PerfectTime/math.max(.01,s.LockTime)>=.6
+     local reward=math.floor(C.Creatures[s.Id].Income*3*(perfectCatch and 1.25 or 1))
+     d.Money+=reward
      sessions[p]=nil display(p) state(p)
-     send(p,"Caught",{Id=s.Id,Count=d.Owned[key],Special=s.Special})
+     send(p,"Caught",{Id=s.Id,Count=d.Owned[key],Special=s.Special,Perfect=perfectCatch,Reward=reward})
     end
    end
   end
  end
  if tickIncome>=1 then
   local elapsed=math.floor(tickIncome) tickIncome-=elapsed
-  for p,d in pairs(profiles) do local _,income=C.Best(d.Owned) d.Money=math.min(1e12,d.Money+income*elapsed) state(p) end
+  for p,d in pairs(profiles) do local _,income=C.Best(d.Owned,d) d.Money=math.min(1e12,d.Money+income*elapsed) state(p) end
  end
  if tickSave>=60 then tickSave=0 for p,d in pairs(profiles) do if not d.Removing then task.spawn(save,p) end end end
 end)

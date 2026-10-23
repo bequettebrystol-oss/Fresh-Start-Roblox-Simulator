@@ -15,6 +15,21 @@ After every completed project change, update these notes and commit and push the
 
 ## Change log
 
+### October 23, 2026 — Larger stations, expanded upgrades, refined catching
+
+- Enlarged every station from 54×39 to 76×58 studs, just over doubling floor space. Increased ceiling height, porch space, station spacing, yard size, and path length. Added equipment workbenches and six spaced booth pads per station. Reduced booth-label clutter.
+- Added a scrolling workbench menu with current/next benefits, prices, maximum levels, available money, and active booth count. Accessible from the Upgrades button or the owner's workbench prompt.
+- Expanded progression to six categories and 25 purchases: antenna (3 levels), receiver (8), stabilizer (5), decoder (5), amplifier (6), and booth expansion (4).
+- Stabilizers slow drift and extend slip grace. Decoders reduce required lock time. Amplifiers increase broadcast income. Booth expansions activate up to six performers. Receiver upgrades continue widening the tuning window. Equipment and booth unlocks update visually.
+- Refined catching with gentler drift, a short acquisition period, a gold perfect-lock region, 25% faster perfect progress, a 25% capture-cash bonus for sustained perfect tracking, slower progress loss after slip grace, and a 40-second timeout.
+- Added server-measured bounded latency compensation, shared target movement math, a forecast marker, directional hints, timer, smooth progress feedback, and Shift for fine keyboard control. Improved touch drag ownership. Faint signals retain higher rare odds during mystery events.
+- Expanded saved profiles without resetting the existing data store: old antenna/receiver levels and collections remain valid, and new categories default to level one. All six upgrade categories are included in save snapshots.
+- Validation: 19 captures through the normal server remote, including faint third-band tracking; tested perfect-capture cash against the formula. Bought upgrades in every category and all three booth expansions using earned test-session money. Verified six active performers and corresponding amplified income.
+- Validation: checked legacy-level normalization, default/max signal effects, 25 total purchase steps, all station deck dimensions and sixth-booth anchors, and best-performer income math (725 base versus 2,097 at maximum upgrades for one of each character).
+- Validation: real keyboard input moved the dial from 0.50 to 0.79 normally and to 0.60 with Shift over the same hold duration. Inspected desktop, iPhone portrait, and compact landscape layouts; scrolled to the bottom upgrade categories. Console showed no game runtime errors during these checks.
+- Regenerated recovery files and checked packaged source equality. Studio sources are synchronized with the repository. Studio returns to Edit mode with the default viewport after testing.
+- Published-server save/rejoin and multi-client release checks remain outstanding, as recorded in the initial build notes.
+
 ### October 23, 2026 — Build the first playable signal simulator
 
 - Built a bright backyard radio yard with six personal stations, desks, antenna towers, broadcast booths, paths, lamps, trees, fences, and a mystery beacon. Preserved the original template baseplate and spawn in ServerStorage.

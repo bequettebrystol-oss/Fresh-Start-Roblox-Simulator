@@ -21,64 +21,73 @@ function W.Build()
  for _,name in ipairs({"Baseplate","SpawnLocation"}) do local original=workspace:FindFirstChild(name) if original then original.Parent=backup end end
  local old=workspace:FindFirstChild("SignalYard") if old then old:Destroy() end
  local root=Instance.new("Folder") root.Name="SignalYard" root.Parent=workspace
- part(root,"Island",Vector3.new(200,3,190),Vector3.new(0,-2,0),Color3.fromRGB(50,83,75),Enum.Material.Grass)
- part(root,"MainWalk",Vector3.new(13,.22,160),Vector3.new(0,-.35,0),Color3.fromRGB(115,132,137),Enum.Material.Concrete)
- for _,x in ipairs({-7,7}) do part(root,"WalkLight",Vector3.new(.18,.12,160),Vector3.new(x,-.15,0),teal,Enum.Material.Neon) end
- local sign=part(root,"Welcome",Vector3.new(35,9,1.5),Vector3.new(0,13,-78),navy)
+ part(root,"Island",Vector3.new(270,3,260),Vector3.new(0,-2,0),Color3.fromRGB(50,83,75),Enum.Material.Grass)
+ part(root,"MainWalk",Vector3.new(17,.22,236),Vector3.new(0,-.35,0),Color3.fromRGB(115,132,137),Enum.Material.Concrete)
+ for _,x in ipairs({-9,9}) do part(root,"WalkLight",Vector3.new(.18,.12,236),Vector3.new(x,-.15,0),teal,Enum.Material.Neon) end
+ local sign=part(root,"Welcome",Vector3.new(35,9,1.5),Vector3.new(0,16,-120),navy)
  label(sign,"BRAINROT\nSIGNAL SIMULATOR",Vector3.zero,380,teal)
- for _,x in ipairs({-17,17}) do part(root,"SignPost",Vector3.new(.6,15,.6),Vector3.new(x,6,-78),navy) end
- local beacon=part(root,"EventBeacon",Vector3.new(5,5,5),Vector3.new(0,19,-65),Color3.fromRGB(170,140,255),Enum.Material.Neon,"Ball")
+ for _,x in ipairs({-17,17}) do part(root,"SignPost",Vector3.new(.6,19,.6),Vector3.new(x,8,-120),navy) end
+ local beacon=part(root,"EventBeacon",Vector3.new(5,5,5),Vector3.new(0,23,-105),Color3.fromRGB(170,140,255),Enum.Material.Neon,"Ball")
  label(beacon,"MYSTERY BROADCAST\nFollow the purple signal",Vector3.new(0,5,0),300)
  for i=1,6 do
   local col=(i-1)%2 local row=math.floor((i-1)/2)
-  local o=Vector3.new(col==0 and -43 or 43,0,-43+row*49)
+  local o=Vector3.new(col==0 and -57 or 57,0,-74+row*77)
   local plot=Instance.new("Model") plot.Name="Station"..i plot:SetAttribute("Index",i) plot.Parent=root
-  part(plot,"Deck",Vector3.new(54,1,39),o,Color3.fromRGB(66,76,91),Enum.Material.WoodPlanks)
+  part(plot,"Deck",Vector3.new(76,1,58),o,Color3.fromRGB(66,76,91),Enum.Material.WoodPlanks)
   local accent=({teal,Color3.fromRGB(185,150,255),Color3.fromRGB(255,161,120)})[row+1]
-  part(plot,"BackWall",Vector3.new(54,11,1),o+Vector3.new(0,5,19),navy)
-  for _,x in ipairs({-26.5,26.5}) do
-   part(plot,"Wall",Vector3.new(1,11,24),o+Vector3.new(x,5,7),navy)
-   part(plot,"Pillar",Vector3.new(.3,10,.3),o+Vector3.new(x,5,-5),accent,Enum.Material.Neon)
+  part(plot,"BackWall",Vector3.new(76,15,1),o+Vector3.new(0,7,28),navy)
+  for _,x in ipairs({-37.5,37.5}) do
+   part(plot,"Wall",Vector3.new(1,15,42),o+Vector3.new(x,7,7),navy)
+   part(plot,"Pillar",Vector3.new(.3,14,.3),o+Vector3.new(x,7,-14),accent,Enum.Material.Neon)
   end
-  local roof=part(plot,"Roof",Vector3.new(57,1,28),o+Vector3.new(0,11,7),Color3.fromRGB(64,83,105))
-  local fill=Instance.new("PointLight") fill.Color=Color3.fromRGB(196,224,255) fill.Brightness=2 fill.Range=25 fill.Shadows=false fill.Parent=roof
-  part(plot,"RoofTrim",Vector3.new(57,.28,.3),o+Vector3.new(0,10.7,-7.2),accent,Enum.Material.Neon)
-  for _,wx in ipairs({-12,12}) do part(plot,"Window",Vector3.new(9,4,.15),o+Vector3.new(wx,6,18.4),Color3.fromRGB(82,127,151),Enum.Material.Glass) end
-  local title=part(plot,"StationSign",Vector3.new(21,2,.3),o+Vector3.new(-12,9,-7.2),navy)
+  local roof=part(plot,"Roof",Vector3.new(79,1,44),o+Vector3.new(0,15,7),Color3.fromRGB(64,83,105))
+  local fill=Instance.new("PointLight") fill.Color=Color3.fromRGB(196,224,255) fill.Brightness=2 fill.Range=38 fill.Shadows=false fill.Parent=roof
+  part(plot,"RoofTrim",Vector3.new(79,.28,.3),o+Vector3.new(0,14.7,-15.2),accent,Enum.Material.Neon)
+  for _,wx in ipairs({-22,0,22}) do part(plot,"Window",Vector3.new(12,5,.15),o+Vector3.new(wx,9,27.4),Color3.fromRGB(82,127,151),Enum.Material.Glass) end
+  local title=part(plot,"StationSign",Vector3.new(25,2,.3),o+Vector3.new(-20,12,-15.2),navy)
   label(title,"AVAILABLE STATION",Vector3.zero,260,accent)
-  part(plot,"Desk",Vector3.new(10,2.6,4),o+Vector3.new(-15,1.7,-3),Color3.fromRGB(150,113,90),Enum.Material.Wood)
-  local radio=part(plot,"Radio",Vector3.new(6,3,2.4),o+Vector3.new(-15,4.3,-3),Color3.fromRGB(240,179,111))
+  part(plot,"Desk",Vector3.new(14,2.6,6),o+Vector3.new(-24,1.7,-9),Color3.fromRGB(150,113,90),Enum.Material.Wood)
+  local radio=part(plot,"Radio",Vector3.new(6,3,2.4),o+Vector3.new(-24,4.3,-9),Color3.fromRGB(240,179,111))
   part(plot,"RadioScreen",Vector3.new(3.2,1.4,.15),radio.Position+Vector3.new(-.6,.2,-1.25),teal,Enum.Material.Neon)
   part(plot,"Dial",Vector3.new(1.1,1.1,.3),radio.Position+Vector3.new(2,0,-1.3),navy,nil,"Ball")
   local prompt=Instance.new("ProximityPrompt") prompt.Name="TunePrompt" prompt.ActionText="Tune signals" prompt.ObjectText="Your radio" prompt.HoldDuration=0 prompt.MaxActivationDistance=14 prompt.RequiresLineOfSight=false prompt.Parent=radio
   label(radio,"TUNE IN\n[E] / Tap",Vector3.new(0,3,0),170,accent)
-  local tower=part(plot,"Tower",Vector3.new(.8,18,.8),o+Vector3.new(-21,20,13),Color3.fromRGB(141,155,170))
+  part(plot,"EquipmentBench",Vector3.new(12,2.6,5),o+Vector3.new(0,1.7,-9),Color3.fromRGB(67,83,105))
+  local rack=part(plot,"ReceiverRack",Vector3.new(3,3,3),o+Vector3.new(-3.5,4.3,-9),accent)
+  label(rack,"WORKBENCH",Vector3.new(3,5,0),160,accent).TextSize=14
+  local upgradePrompt=Instance.new("ProximityPrompt") upgradePrompt.Name="UpgradePrompt" upgradePrompt.ActionText="Upgrade station" upgradePrompt.ObjectText="Equipment workbench" upgradePrompt.MaxActivationDistance=14 upgradePrompt.HoldDuration=0 upgradePrompt.RequiresLineOfSight=false upgradePrompt.Parent=rack
+  part(plot,"StabilizerCoil",Vector3.new(1.6,2.5,1.6),o+Vector3.new(0,4,-9),teal,Enum.Material.Neon,"Ball")
+  part(plot,"DecoderCore",Vector3.new(2,2,2),o+Vector3.new(3.5,4,-9),Color3.fromRGB(185,150,255),Enum.Material.Neon)
+  for j=1,5 do part(plot,"Amplifier"..j,Vector3.new(.7,.5,2),o+Vector3.new(-29+j*1.5,3.4,-9),accent,Enum.Material.Neon) end
+  local tower=part(plot,"Tower",Vector3.new(.8,26,.8),o+Vector3.new(-31,26,23),Color3.fromRGB(141,155,170))
   for j=1,3 do
-   local bar=part(plot,"Antenna"..j,Vector3.new(5+j*2,.25,.25),o+Vector3.new(-21,23+j*2,13),accent,Enum.Material.Neon)
+   local bar=part(plot,"Antenna"..j,Vector3.new(8+j*3,.25,.25),o+Vector3.new(-31,30+j*3,23),accent,Enum.Material.Neon)
    bar.Transparency=j==1 and 0 or .85
   end
-  for j=1,3 do
-   local p=o+Vector3.new(0+(j-1)*8,0,7)
+  for j=1,6 do
+   local p=o+Vector3.new(-30+(j-1)*12,0,16)
    part(plot,"Booth"..j,Vector3.new(7,.5,7),p+Vector3.new(0,.8,0),accent,Enum.Material.Neon)
    part(plot,"BoothPad"..j,Vector3.new(6.6,.3,6.6),p+Vector3.new(0,1.15,0),navy)
    local anchor=part(plot,"Display"..j,Vector3.new(.1,.1,.1),p+Vector3.new(0,3,0),navy) anchor.Transparency=1 anchor.CanCollide=false
-   label(anchor,"EMPTY BOOTH",Vector3.new(0,3,0),170,accent)
+   label(anchor,"BOOTH "..j..(j<=3 and "\nEMPTY" or "\nLOCKED"),Vector3.new(0,3,0),112,accent).TextSize=12
+   anchor.Label.Size=UDim2.fromOffset(112,48) anchor.Label.MaxDistance=65
+   plot["Booth"..j].Transparency=j<=3 and 0 or .8
   end
-  local spawn=Instance.new("SpawnLocation") spawn.Name="Arrival" spawn.Size=Vector3.new(6,.3,6) spawn.Position=o+Vector3.new(-15,1,-12) spawn.Anchored=true spawn.Transparency=1 spawn.CanCollide=false spawn.Enabled=false spawn.Parent=plot
+  local spawn=Instance.new("SpawnLocation") spawn.Name="Arrival" spawn.Size=Vector3.new(6,.3,6) spawn.Position=o+Vector3.new(-24,1,-22) spawn.Anchored=true spawn.Transparency=1 spawn.CanCollide=false spawn.Enabled=false spawn.Parent=plot
   spawn.CFrame=CFrame.new(spawn.Position)*CFrame.Angles(0,math.pi,0)
   task.wait()
  end
  local rng=Random.new(34)
  for i=1,24 do
-  local x=(i%2==0 and -1 or 1)*rng:NextNumber(77,93) local z=rng:NextNumber(-85,85)
+  local x=(i%2==0 and -1 or 1)*rng:NextNumber(110,125) local z=rng:NextNumber(-115,115)
   part(root,"Trunk",Vector3.new(1.6,7,1.6),Vector3.new(x,2,z),Color3.fromRGB(102,77,68),Enum.Material.Wood)
   part(root,"Canopy",Vector3.new(9,12,9),Vector3.new(x,10,z),Color3.fromRGB(44,rng:NextInteger(100,145),109),nil,"Ball")
  end
- for _,x in ipairs({-96,96}) do
-  part(root,"FenceRail",Vector3.new(.5,1.2,180),Vector3.new(x,3,0),Color3.fromRGB(120,142,137),Enum.Material.Wood)
-  for z=-85,85,10 do part(root,"FencePost",Vector3.new(1,5,1),Vector3.new(x,1.5,z),Color3.fromRGB(120,142,137),Enum.Material.Wood) end
+ for _,x in ipairs({-130,130}) do
+  part(root,"FenceRail",Vector3.new(.5,1.2,242),Vector3.new(x,3,0),Color3.fromRGB(120,142,137),Enum.Material.Wood)
+  for z=-120,120,10 do part(root,"FencePost",Vector3.new(1,5,1),Vector3.new(x,1.5,z),Color3.fromRGB(120,142,137),Enum.Material.Wood) end
  end
- for z=-60,70,26 do for _,x in ipairs({-10,10}) do
+ for z=-100,105,29 do for _,x in ipairs({-13,13}) do
   part(root,"LampPost",Vector3.new(.5,6,.5),Vector3.new(x,2.5,z),navy)
   local lamp=part(root,"Lamp",Vector3.new(1.3,1.3,1.3),Vector3.new(x,6,z),Color3.fromRGB(255,215,153),Enum.Material.Neon,"Ball")
   local l=Instance.new("PointLight") l.Color=lamp.Color l.Range=18 l.Brightness=1.5 l.Parent=lamp

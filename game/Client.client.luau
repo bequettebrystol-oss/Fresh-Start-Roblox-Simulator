@@ -28,13 +28,14 @@ local cash=text(header,"$0  /  $0 per sec",UDim2.fromOffset(14,32),UDim2.new(.65
 local collectionButton=button(header,"Collection",UDim2.new(1,-116,0,13),UDim2.fromOffset(104,36),colors.Purple)
 local status=text(gui,"Connecting to your station...",UDim2.fromOffset(20,80),UDim2.new(1,-40,0,25),12,colors.Muted)
 local eventLabel=text(gui,"",UDim2.fromOffset(20,108),UDim2.new(1,-40,0,28),13,colors.Purple)
+for _,label in ipairs({status,eventLabel}) do label.TextStrokeColor3=colors.Bg label.TextStrokeTransparency=.35 end
 local bottom=frame(gui,UDim2.new(.5,0,1,-76),UDim2.new(1,-24,0,60),colors.Bg) bottom.AnchorPoint=Vector2.new(.5,0)
 create("UISizeConstraint",bottom,{MaxSize=Vector2.new(760,60)})
 local tune=button(bottom,"TUNE RADIO",UDim2.new(0,8,0,9),UDim2.new(.3,-8,0,42))
 bottom.Name="Navigation" tune.Name="TuneButton"
-local antenna=button(bottom,"Antenna $350",UDim2.new(.3,4,0,9),UDim2.new(.35,-8,0,42),colors.Purple)
-local receiver=button(bottom,"Receiver $100",UDim2.new(.65,0,0,9),UDim2.new(.35,-8,0,42),colors.Orange)
-antenna.Name="AntennaButton" receiver.Name="ReceiverButton"
+local upgradesButton=button(bottom,"UPGRADES",UDim2.new(.3,4,0,9),UDim2.new(.35,-8,0,42),colors.Purple)
+local collectionNav=button(bottom,"COLLECTION",UDim2.new(.65,0,0,9),UDim2.new(.35,-8,0,42),colors.Orange)
+upgradesButton.Name="UpgradeButton" collectionNav.Name="CollectionButton"
 local overlay=frame(gui,UDim2.fromScale(.5,.53),UDim2.fromOffset(740,470),colors.Bg) overlay.AnchorPoint=Vector2.new(.5,.5) overlay.Visible=false
 overlay.Name="ListeningRoom"
 create("UIStroke",overlay,{Color=Color3.fromRGB(68,88,108),Thickness=1})
@@ -46,8 +47,10 @@ choose.Name="Choose"
 text(choose,"Choose a frequency band",UDim2.fromOffset(14,8),UDim2.new(1,-28,0,28),16)
 local bands={}
 local selected=1 local risky=false local profile=nil local signal=nil local dial=.5 local progress=0 local dragging=false local direction=0 local sendAt=0 local receivedId=nil
+local visualProgress=0 local dragInput=nil local shopFeedback=nil
 local function notice(msg)
  status.Text=msg status.TextColor3=colors.Teal
+ if shopFeedback then shopFeedback.Text=msg end
 end
 for i,b in ipairs(C.Bands) do
  local btn=button(choose,b.Name,UDim2.new((i-1)/3,10,0,50),UDim2.new(1/3,-20,0,62),b.Color) btn.TextSize=12 bands[i]=btn
@@ -56,24 +59,28 @@ for i,b in ipairs(C.Bands) do
   else notice("Upgrade your antenna to unlock this band.") end
  end)
 end
-local desc=text(choose,"Clear signals are easy to hold. Faint signals have better rare odds.",UDim2.fromOffset(16,125),UDim2.new(1,-32,0,44),14,colors.Muted)
+local desc=text(choose,"Clear = easier tracking. Faint = better rare odds.\nStay in the center for 25% faster capture!",UDim2.fromOffset(16,125),UDim2.new(1,-32,0,44),14,colors.Muted)
 local mode=button(choose,"SIGNAL: CLEAR / EASY",UDim2.new(0,16,0,185),UDim2.new(1,-32,0,46))
 mode.Activated:Connect(function() risky=not risky mode.Text=risky and "SIGNAL: FAINT / RISKY" or "SIGNAL: CLEAR / EASY" mode.BackgroundColor3=risky and colors.Orange or colors.Teal end)
 local startButton=button(choose,"SEARCH THE STATIC",UDim2.new(0,16,1,-65),UDim2.new(1,-32,0,46),colors.Purple)
 startButton.Name="SearchButton"
 startButton.Activated:Connect(function() event:FireServer("Start",selected,risky) end)
 local tuning=frame(overlay,UDim2.fromOffset(16,55),UDim2.new(1,-32,1,-71),colors.Panel) tuning.Visible=false
+tuning.Name="Tuning"
 local subtitle=text(tuning,"Follow the moving signal",UDim2.fromOffset(15,7),UDim2.new(1,-30,0,26),15,colors.Muted)
 local tuningPreview=create("ViewportFrame",tuning,{Size=UDim2.new(1,-40,0,90),Position=UDim2.fromOffset(20,30),BackgroundTransparency=1,Ambient=Color3.fromRGB(210,210,210)})
 local reveal=text(tuning,"? ? ?",UDim2.fromOffset(15,119),UDim2.new(1,-30,0,21),18,colors.Purple) reveal.TextXAlignment=Enum.TextXAlignment.Center reveal.Font=Enum.Font.GothamBlack
 local quality=text(tuning,"STATIC",UDim2.fromOffset(15,141),UDim2.new(1,-30,0,18),12,colors.Muted) quality.TextXAlignment=Enum.TextXAlignment.Center
 local track=frame(tuning,UDim2.new(0,20,0,163),UDim2.new(1,-40,0,48),colors.Bg)
 local zone=frame(track,UDim2.fromScale(.4,0),UDim2.fromScale(.17,1),colors.Teal) zone.BackgroundTransparency=.4
+local centerZone=frame(zone,UDim2.fromScale(.28,0),UDim2.fromScale(.44,1),colors.Orange) centerZone.BackgroundTransparency=.5
+local forecast=frame(track,UDim2.fromScale(.5,0),UDim2.new(0,2,1,0),colors.Muted) forecast.BackgroundTransparency=.35 forecast.ZIndex=2
 local needle=frame(track,UDim2.new(.5,-2,0,-5),UDim2.new(0,4,1,10),colors.Text) needle.ZIndex=3
 local input=create("TextButton",track,{Text="",BackgroundTransparency=1,Size=UDim2.fromScale(1,1),ZIndex=5,AutoButtonColor=false})
+track.Name="FrequencyTrack" input.Name="DialInput" needle.Name="Needle"
 local bar=frame(tuning,UDim2.new(0,20,0,226),UDim2.new(1,-40,0,10),colors.Bg)
 local fill=frame(bar,UDim2.fromScale(0,0),UDim2.fromScale(0,1),colors.Teal)
-local help=text(tuning,"Drag the dial • A/D or arrow keys\nHold the white marker inside the glowing zone",UDim2.new(0,20,0,247),UDim2.new(1,-40,0,43),13,colors.Muted)
+local help=text(tuning,"Drag • A/D or arrows • Shift for fine control\nGold center = faster lock. Brief slips have a grace period.",UDim2.new(0,20,0,247),UDim2.new(1,-40,0,43),13,colors.Muted)
 local left=button(tuning,"<",UDim2.new(0,20,1,-59),UDim2.new(.47,-20,0,44),colors.Purple)
 local right=button(tuning,">",UDim2.new(.53,0,1,-59),UDim2.new(.47,-20,0,44),colors.Purple)
 local result=frame(overlay,UDim2.fromOffset(16,55),UDim2.new(1,-32,1,-71),colors.Panel) result.Visible=false
@@ -83,6 +90,20 @@ local resultName=text(result,"",UDim2.fromOffset(16,207),UDim2.new(1,-32,0,37),2
 local resultInfo=text(result,"",UDim2.fromOffset(16,247),UDim2.new(1,-32,0,45),13,colors.Muted) resultInfo.TextXAlignment=Enum.TextXAlignment.Center
 local again=button(result,"FIND ANOTHER SIGNAL",UDim2.new(0,16,1,-62),UDim2.new(1,-32,0,44))
 local library=frame(overlay,UDim2.fromOffset(16,55),UDim2.new(1,-32,1,-71),colors.Panel) library.Visible=false
+local shop=frame(overlay,UDim2.fromOffset(16,55),UDim2.new(1,-32,1,-71),colors.Panel) shop.Name="Upgrades" shop.Visible=false
+local shopBalance=text(shop,"",UDim2.fromOffset(12,1),UDim2.new(1,-24,0,18),12,colors.Teal)
+shopFeedback=text(shop,"Each upgrade shows its current effect and the next improvement.",UDim2.fromOffset(12,20),UDim2.new(1,-24,0,22),11,colors.Muted)
+local shopScroll=create("ScrollingFrame",shop,{Name="UpgradeList",Position=UDim2.fromOffset(10,45),Size=UDim2.new(1,-20,1,-55),BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=5,AutomaticCanvasSize=Enum.AutomaticSize.Y,CanvasSize=UDim2.new()})
+create("UIListLayout",shopScroll,{Padding=UDim.new(0,10),SortOrder=Enum.SortOrder.LayoutOrder})
+local upgradeCards={}
+for index,u in ipairs(C.Upgrades) do
+ local card=frame(shopScroll,UDim2.new(),UDim2.new(1,-10,0,118),colors.Bg) card.Name=u.Key card.LayoutOrder=index
+ local name=text(card,u.Name,UDim2.fromOffset(12,6),UDim2.new(1,-24,0,25),15,colors.Teal)
+ local effect=text(card,"",UDim2.fromOffset(12,34),UDim2.new(1,-120,0,77),12,colors.Muted)
+ local buy=button(card,"...",UDim2.new(1,-104,0,48),UDim2.fromOffset(94,44),index%2==0 and colors.Purple or colors.Teal) buy.Name="Buy"
+ buy.Activated:Connect(function() event:FireServer("Upgrade",u.Key) end)
+ upgradeCards[u.Key]={Name=name,Effect=effect,Buy=buy}
+end
 local scrolling=create("ScrollingFrame",library,{Size=UDim2.new(1,-20,1,-20),Position=UDim2.fromOffset(10,10),BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=4,AutomaticCanvasSize=Enum.AutomaticSize.Y,CanvasSize=UDim2.new()})
 local grid=create("UIGridLayout",scrolling,{CellSize=UDim2.new(.5,-8,0,78),CellPadding=UDim2.fromOffset(8,8),SortOrder=Enum.SortOrder.LayoutOrder})
 local cards={}
@@ -94,29 +115,31 @@ for id,c in ipairs(C.Creatures) do
 end
 local sound=create("Sound",game:GetService("SoundService"),{Name="SignalTone",SoundId="rbxasset://sounds/electronicpingshort.wav",Volume=0,Looped=true})
 local function page(which)
- choose.Visible=which=="Choose" tuning.Visible=which=="Tuning" result.Visible=which=="Result" library.Visible=which=="Library"
- title.Text=which=="Library" and "YOUR SIGNAL COLLECTION" or "THE LISTENING ROOM"
+ choose.Visible=which=="Choose" tuning.Visible=which=="Tuning" result.Visible=which=="Result" library.Visible=which=="Library" shop.Visible=which=="Shop"
+ title.Text=which=="Shop" and "STATION WORKBENCH" or which=="Library" and "YOUR SIGNAL COLLECTION" or "THE LISTENING ROOM"
+ if which=="Shop" then shopFeedback.Text="Spend your broadcast income to improve your station." end
  overlay.Visible=true
 end
 local function stop()
- if signal then event:FireServer("Cancel") end signal=nil progress=0 dragging=false direction=0 sound:Stop()
+ if signal then event:FireServer("Cancel") end signal=nil progress=0 visualProgress=0 dragging=false dragInput=nil direction=0 sound:Stop()
 end
 local function open() if not profile then return end if signal then page("Tuning") else page("Choose") end end
 close.Activated:Connect(function() stop() overlay.Visible=false end)
 tune.Activated:Connect(open)
 again.Activated:Connect(function() page("Choose") end)
 collectionButton.Activated:Connect(function() stop() page("Library") end)
-antenna.Activated:Connect(function() event:FireServer("Upgrade","Antenna") end)
-receiver.Activated:Connect(function() event:FireServer("Upgrade","Receiver") end)
+collectionNav.Activated:Connect(function() stop() page("Library") end)
+upgradesButton.Activated:Connect(function() stop() page("Shop") end)
 local function inputPosition(x)
  dial=math.clamp((x-track.AbsolutePosition.X)/track.AbsoluteSize.X,0,1)
 end
 input.InputBegan:Connect(function(i)
- if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=true inputPosition(i.Position.X) end
+ if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=true dragInput=i inputPosition(i.Position.X) end
 end)
-UIS.InputChanged:Connect(function(i) if dragging and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then inputPosition(i.Position.X) end end)
+UIS.InputChanged:Connect(function(i) if dragging and (i==dragInput or i.UserInputType==Enum.UserInputType.MouseMovement and dragInput and dragInput.UserInputType==Enum.UserInputType.MouseButton1) then inputPosition(i.Position.X) end end)
 UIS.InputEnded:Connect(function(i)
- if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false direction=0 end
+ if i==dragInput or i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=false dragInput=nil end
+ if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then direction=0 end
  if i.KeyCode==Enum.KeyCode.A or i.KeyCode==Enum.KeyCode.D or i.KeyCode==Enum.KeyCode.Left or i.KeyCode==Enum.KeyCode.Right then direction=0 end
 end)
 UIS.InputBegan:Connect(function(i,processed)
@@ -139,35 +162,49 @@ end
 local broadcast={Band=1,Ends=0,Next=0}
 event.OnClientEvent:Connect(function(kind,data)
  if kind=="State" then
+  local firstState=profile==nil
   profile=data cash.Text="$"..data.Money.."  /  $"..data.Income.." per sec"
-  antenna.Text=C.AntennaCosts[data.Antenna] and "Antenna $"..C.AntennaCosts[data.Antenna] or "Antenna MAX"
-  receiver.Text=C.ReceiverCosts[data.Receiver] and "Receiver $"..C.ReceiverCosts[data.Receiver] or "Receiver MAX"
+  shopBalance.Text="$"..data.Money.." available / "..data.Slots.." active booths"
+  if firstState then task.spawn(function()
+   task.wait(.4)
+   local yard=workspace:FindFirstChild("SignalYard") local plot=yard and yard:FindFirstChild(data.Plot)
+   local char=player.Character local root=char and char:FindFirstChild("HumanoidRootPart")
+   if plot and root and workspace.CurrentCamera then workspace.CurrentCamera.CFrame=CFrame.lookAt(root.Position+Vector3.new(8,8,-16),plot.Radio.Position+Vector3.new(5,0,0)) end
+  end) end
+  for _,u in ipairs(C.Upgrades) do
+   local row=upgradeCards[u.Key] local level=data.Upgrades[u.Key] local cost=u.Costs[level]
+   row.Name.Text=u.Name.."  /  Lv "..level.." of "..(#u.Costs+1)
+   row.Effect.Text="Now: "..C.Description(u.Key,level)..(cost and "\nNext: "..C.Description(u.Key,level+1) or "\nFully upgraded")
+   row.Buy.Text=cost and "$"..cost or "MAX"
+   row.Buy.Active=cost~=nil and data.Money>=cost row.Buy.AutoButtonColor=row.Buy.Active row.Buy.BackgroundTransparency=row.Buy.Active and 0 or .65
+  end
   for i,b in ipairs(bands) do b.Text=i<=data.Antenna and C.Bands[i].Name or (C.Bands[i].Name.."\nLOCKED") b.BackgroundTransparency=i==selected and 0 or .6 end
   local total=0
   for id,c in ipairs(C.Creatures) do
    local count=data.Owned[tostring(id)] or 0
    cards[id].Name.Text=count>0 and c.Name or "???"
-   cards[id].Info.Text=count>0 and ("$"..math.floor(C.Value(id,count)).." / sec   •   x"..count) or C.Bands[c.Band].Name
+   cards[id].Info.Text=count>0 and ("$"..math.floor(C.Value(id,count)*C.Multiplier(data.Upgrades)).." / sec   •   x"..count) or C.Bands[c.Band].Name
    if count>0 then total+=1 end
   end
   collectionButton.Text=total.." / 12"
   if status.Text=="Connecting to your station..." then notice("Your radio is on the desk. Tune in to catch your first brainrot!") end
  elseif kind=="Open" then open()
+ elseif kind=="OpenUpgrades" then stop() page("Shop")
  elseif kind=="Notice" then notice(data)
  elseif kind=="Signal" then
-  signal=data progress=0 dial=.5 receivedId=nil page("Tuning")
+  signal=data progress=0 visualProgress=0 dial=.5 receivedId=nil page("Tuning")
   preview(1,tuningPreview,true)
   reveal.Text="? ? ?" reveal.TextColor3=C.Bands[data.Band].Color
   subtitle.Text=C.Bands[data.Band].Name..(data.Special and " / MYSTERY SIGNAL" or data.Risky and " / FAINT SIGNAL" or " / CLEAR SIGNAL")
   sound:Play()
  elseif kind=="Progress" then
-  progress=data.Progress fill.Size=UDim2.fromScale(progress/3.5,1)
+  progress=data.Progress
   if data.Id and receivedId~=data.Id then receivedId=data.Id reveal.Text=C.Creatures[data.Id].Name preview(data.Id,tuningPreview,false) end
  elseif kind=="Caught" then
   stop() page("Result") preview(data.Id)
   local c=C.Creatures[data.Id] resultName.Text=c.Name resultName.TextColor3=c.Color
-  resultTitle.Text=data.Count==1 and "NEW SIGNAL DISCOVERED!" or "SIGNAL AMPLIFIED!"
-  resultInfo.Text="Base income: $"..c.Income.." / sec  •  Owned: "..data.Count.."\nYour best three automatically go on air. Duplicates amplify income."
+  resultTitle.Text=data.Perfect and "PERFECT CAPTURE!" or data.Count==1 and "NEW SIGNAL DISCOVERED!" or "SIGNAL AMPLIFIED!"
+  resultInfo.Text="Capture bonus: $"..data.Reward..(data.Perfect and " (+25%)" or "").."  /  Owned: "..data.Count.."\nYour best "..(profile and profile.Slots or 3).." go on air. Duplicates amplify income."
   notice("Captured "..c.Name.."! Your strongest signals are now broadcasting.")
  elseif kind=="End" then stop() page("Choose") notice(data)
  elseif kind=="Broadcast" then broadcast=data end
@@ -184,7 +221,7 @@ Run.RenderStepped:Connect(function(dt)
   if compact then
    title.TextSize=16
    choose.Position=UDim2.fromOffset(12,45) choose.Size=UDim2.new(1,-24,1,-57)
-   tuning.Position=choose.Position tuning.Size=choose.Size result.Position=choose.Position result.Size=choose.Size library.Position=choose.Position library.Size=choose.Size
+   for _,p in ipairs({tuning,result,library,shop}) do p.Position=choose.Position p.Size=choose.Size end
    for _,v in ipairs(choose:GetChildren()) do if v:IsA("TextLabel") and v~=desc then v.Position=UDim2.fromOffset(12,0) v.Size=UDim2.new(1,-24,0,22) v.TextSize=13 end end
    for i,b in ipairs(bands) do b.Position=UDim2.new((i-1)/3,8,0,27) b.Size=UDim2.new(1/3,-16,0,40) end
    desc.Position=UDim2.fromOffset(12,71) desc.Size=UDim2.new(1,-24,0,28) desc.TextSize=12
@@ -206,7 +243,7 @@ Run.RenderStepped:Connect(function(dt)
    again.Position=UDim2.new(0,12,1,-48) again.Size=UDim2.new(1,-24,0,44)
   else
    title.TextSize=20
-   for _,p in ipairs({choose,tuning,result,library}) do p.Position=UDim2.fromOffset(16,55) p.Size=UDim2.new(1,-32,1,-71) end
+   for _,p in ipairs({choose,tuning,result,library,shop}) do p.Position=UDim2.fromOffset(16,55) p.Size=UDim2.new(1,-32,1,-71) end
    for _,v in ipairs(choose:GetChildren()) do if v:IsA("TextLabel") and v~=desc then v.Position=UDim2.fromOffset(14,8) v.Size=UDim2.new(1,-28,0,28) v.TextSize=16 end end
    for i,b in ipairs(bands) do b.Position=UDim2.new((i-1)/3,10,0,50) b.Size=UDim2.new(1/3,-20,0,62) end
    desc.Position=UDim2.fromOffset(16,125) desc.Size=UDim2.new(1,-32,0,44) desc.TextSize=14
@@ -238,15 +275,23 @@ Run.RenderStepped:Connect(function(dt)
  if broadcast.Ends>now then eventLabel.Text="MYSTERY LIVE  /  ALL BANDS  /  "..math.ceil(broadcast.Ends-now).."s  /  Better rare odds!"
  elseif broadcast.Next>0 then eventLabel.Text="Next mystery broadcast in "..math.max(0,math.ceil(broadcast.Next-now)).."s" end
  if signal then
-  dial=math.clamp(dial+direction*dt*.65,0,1)
-  local target=.5+.34*math.sin((now-signal.Start)*signal.Speed+signal.Phase)
+  local fine=UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.RightShift)
+  dial=math.clamp(dial+direction*dt*(fine and .28 or .8),0,1)
+  local target=C.Target(signal,now)
   zone.Position=UDim2.fromScale(target-signal.Width/2,0) zone.Size=UDim2.fromScale(signal.Width,1)
   needle.Position=UDim2.new(dial,-2,0,-5)
+  forecast.Position=UDim2.fromScale(C.Target(signal,now+.16),0)
   local locked=math.abs(dial-target)<=signal.Width/2
+  local perfect=locked and math.abs(dial-target)<=signal.Width*.22
+  needle.BackgroundColor3=perfect and colors.Orange or colors.Text
   zone.BackgroundColor3=locked and colors.Teal or colors.Purple
   local strength=math.clamp(1-math.abs(dial-target)*3,0,1)
-  quality.Text=locked and ("LOCKED  /  "..math.floor(progress/3.5*100).."%") or "STATIC  /  Follow the glowing zone"
-  quality.TextColor3=locked and colors.Teal or colors.Muted
+  local percent=math.floor(progress/signal.Required*100)
+  quality.Text=now-signal.Start<.5 and "FIND THE SIGNAL" or perfect and ("PERFECT x1.25  /  "..percent.."%") or locked and ("LOCKED  /  "..percent.."%") or (dial<target and "TUNE RIGHT  >" or "<  TUNE LEFT")
+  quality.TextColor3=perfect and colors.Orange or locked and colors.Teal or colors.Muted
+  subtitle.Text=C.Bands[signal.Band].Name.." / "..math.max(0,math.ceil(signal.Duration-(now-signal.Start))).."s"..(signal.Special and " / MYSTERY" or signal.Risky and " / FAINT" or " / CLEAR")
+  visualProgress+=(progress-visualProgress)*(1-math.exp(-dt*16))
+  fill.Size=UDim2.fromScale(math.clamp(visualProgress/signal.Required,0,1),1)
   if not receivedId then reveal.TextTransparency=.65-strength*.5 end
   sound.Volume=.04+strength*.09 sound.PlaybackSpeed=.65+strength*.65
   sendAt+=dt if sendAt>=.09 then sendAt=0 event:FireServer("Dial",dial) end
